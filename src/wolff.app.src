@@ -1,0 +1,16 @@
+{application, wolff,
+  [{description, "An EMQ X Kafka Connection plugin"},
+    {vsn, "git"},
+    {modules, [wolff, wolff_app, wolff_sup]},
+    {registered, []},
+    {mod, {wolff_app, []}},
+    {applications,
+      [kernel,
+        stdlib,
+        kafka_protocol,
+        replayq
+      ]},
+    {env, []},
+    {licenses, ["Apache 2.0"]},
+    {links, []}
+  ]}.
