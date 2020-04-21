@@ -1,5 +1,5 @@
 {application, wolff,
-  [{description, "An EMQ X Kafka Connection plugin"},
+  [{description, "Kafka's publisher"},
     {vsn, "git"},
     {modules, [wolff, wolff_app, wolff_sup]},
     {registered, []},

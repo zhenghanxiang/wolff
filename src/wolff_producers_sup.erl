@@ -23,7 +23,7 @@
 %% 对外接口
 start_link() ->
   ?LOG(warning, "start link..."),
-  supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+  supervisor:start_link({local, wolff_producers_sup}, wolff_producers_sup, []).
 
 -spec ensure_present(ClientId, Topic, Config) -> Result when
   ClientId :: wolff:client_id(),
@@ -33,7 +33,7 @@ start_link() ->
 ensure_present(ClientId, Topic, Config) ->
   ?LOG(warning, "ensure present... ClientId: ~p, Topic: ~p, Config: ~p", [ClientId, Topic, Config]),
   ChildSpec = child_spec(ClientId, Topic, Config),
-  case supervisor:start_child(?MODULE, ChildSpec) of
+  case supervisor:start_child(wolff_producers_sup, ChildSpec) of
     {ok, Pid} -> {ok, Pid};
     {error, {already_started, Pid}} -> {ok, Pid};
     {error, already_present} -> {error, not_running}
@@ -45,8 +45,8 @@ ensure_present(ClientId, Topic, Config) ->
 ensure_absence(ClientId, Name) ->
   ?LOG(warning, "ensure absence... ClientId: ~p, Name: ~p", [ClientId, Name]),
   Id = {ClientId, Name},
-  case supervisor:terminate_child(?MODULE, Id) of
-    ok -> ok = supervisor:delete_child(?MODULE, Id);
+  case supervisor:terminate_child(wolff_producers_sup, Id) of
+    ok -> ok = supervisor:delete_child(wolff_producers_sup, Id);
     {error, not_found} -> ok
   end.
 

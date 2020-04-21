@@ -56,7 +56,7 @@ start_link(ClientId, Topic, Partition, MaybeConnPid, Config) ->
     conn => MaybeConnPid,
     config => use_defaults(Config)
   },
-  gen_server:start_link(?MODULE, State, []).
+  gen_server:start_link(wolff_producer, State, []).
 
 -spec stop(pid()) -> any().
 stop(Pid) ->

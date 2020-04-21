@@ -23,7 +23,7 @@
 %% export fun
 start_link() ->
   ?LOG(warning, "start link..."),
-  supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+  supervisor:start_link({local, wolff_client_sup}, wolff_client_sup, []).
 
 -spec ensure_present(ClientId, Hosts, Config) -> Result when
   ClientId :: wolff:client_id(),
@@ -33,7 +33,7 @@ start_link() ->
 ensure_present(ClientId, Hosts, Config) ->
   ?LOG(warning, "ensure present... ClientId: ~p, Hosts: ~p, Config: ~p", [ClientId, Hosts, Config]),
   ChildSpec = child_spec(ClientId, Hosts, Config),
-  case supervisor:start_child(?MODULE, ChildSpec) of
+  case supervisor:start_child(wolff_client_sup, ChildSpec) of
     {ok, Pid} -> {ok, Pid};
     {error, {already_started, Pid}} -> {ok, Pid};
     {error, already_present} -> {error, client_not_running}
@@ -43,8 +43,8 @@ ensure_present(ClientId, Hosts, Config) ->
   ClientId :: wolff:client_id().
 ensure_absence(ClientId) ->
   ?LOG(warning, "ensure absence... ClientId: ~p", [ClientId]),
-  case supervisor:terminate_child(?MODULE, ClientId) of
-    ok -> supervisor:delete_child(?MODULE, ClientId);
+  case supervisor:terminate_child(wolff_client_sup, ClientId) of
+    ok -> supervisor:delete_child(wolff_client_sup, ClientId);
     {error, not_found} -> ok
   end.
 
@@ -53,7 +53,7 @@ ensure_absence(ClientId) ->
   Result :: {'ok', pid()} | {'error', any()}.
 find_client(ClientId) ->
   ?LOG(warning, "find client... ClientId: ~p", [ClientId]),
-  Children = supervisor:which_children(?MODULE),
+  Children = supervisor:which_children(wolff_client_sup),
   ?LOG("Children: ~p", [Children]),
   case lists:keyfind(ClientId, 1, Children) of
     {ClientId, Client, _, _} when is_pid(Client) -> {ok, Client};

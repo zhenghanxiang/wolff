@@ -65,8 +65,8 @@ start_link(ClientId, Hosts, Config) ->
     leaders => #{}
   },
   case maps:get(reg_name, Config, false) of
-    false -> gen_server:start_link(?MODULE, State, []);
-    Name -> gen_server:start_link({local, Name}, ?MODULE, State, [])
+    false -> gen_server:start_link(wolff_client, State, []);
+    Name -> gen_server:start_link({local, Name}, wolff_client, State, [])
   end.
 
 -spec stop(Pid) -> Reply when

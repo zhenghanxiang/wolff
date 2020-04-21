@@ -23,7 +23,7 @@
 %% export fun
 start_link() ->
   ?LOG(warning, "start link..."),
-  gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
+  gen_server:start_link({local, wolff_stats}, wolff_stats, [], []).
 
 recv(ClientId, Topic, Partition, #{cnt := Cnt, oct := Oct} = Numbers) ->
   ?LOG(warning, "recv... ClientId: ~p, Topic: ~p, Partition: ~p, Numbers: ~p", [ClientId, Topic, Partition, Numbers]),

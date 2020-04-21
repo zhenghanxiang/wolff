@@ -42,7 +42,7 @@ topic => kpro:topic()
 start_link(ClientId, Topic, Config) ->
   ?LOG(warning, "start link... ClientId: ~p, Topic: ~p, Config: ~p", [ClientId, Topic, Config]),
   Name = get_name(Config),
-  gen_server:start_link({local, Name}, ?MODULE, {ClientId, Topic, Config}, []).
+  gen_server:start_link({local, Name}, wolff_producers, {ClientId, Topic, Config}, []).
 
 -spec start_linked_producers(Client, Topic, ProducerCfg) -> {ok, producers()} | {error, any()} when
   Client :: wolff:client_id() | pid(),
@@ -50,12 +50,14 @@ start_link(ClientId, Topic, Config) ->
   ProducerCfg :: config().
 start_linked_producers(Client, Topic, ProducerCfg) ->
   ?LOG(warning, "start linked producers... Client: ~p, Topic: ~p, ProducerCfg: ~p", [Client, Topic, ProducerCfg]),
-  {ClientId, ClientPid} = case is_binary(Client) of
-                            true ->
-                              {ok, Pid} = wolff_client_sup:find_client(Client),
-                              {Client, Pid};
-                            false -> {wolff_client:get_id(Client), Client}
-                          end,
+  {ClientId, ClientPid} =
+    case is_binary(Client) of
+      true ->
+        {ok, Pid} = wolff_client_sup:find_client(Client),
+        {Client, Pid};
+      false -> {wolff_client:get_id(Client), Client}
+    end,
+
   case wolff_client:get_leader_connections(ClientPid, Topic) of
     {ok, Connections} ->
       Workers = start_link_producers(ClientId, Topic, Connections, ProducerCfg),

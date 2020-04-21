@@ -18,7 +18,7 @@
 %% supervisor:start_link is synchronous.
 %% It does not return until all child processes have been started.
 start_link() ->
-  supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+  supervisor:start_link({local, wolff_sup}, wolff_sup, []).
 
 %% sup_flags() = #{strategy => strategy(),         % optional
 %%                 intensity => non_neg_integer(), % optional
