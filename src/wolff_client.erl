@@ -259,9 +259,11 @@ get_metadata([Host | Rest], ConnectFun, Topic, Errors) ->
 
 do_get_metadata(Vsn, Connection, Topic) ->
   Req = kpro:make_request(metadata, Vsn, [{topics, [Topic]}, {allow_auto_topic_creation, false}]),
+  ?LOG(warning, "do_get_metadata Req: ~p", [Req]),
   case kpro:request_sync(Connection, Req, 10000) of
     {ok, #kpro_rsp{msg = Meta}} ->
       BrokersMeta = kpro:find(brokers, Meta),
+      ?LOG(warning, "BrokersMeta: ~p", [BrokersMeta]),
       Brokers = [parse_broker_meta(M) || M <- BrokersMeta],
       [TopicMeta] = kpro:find(topic_metadata, Meta),
       ErrorCode = kpro:find(error_code, TopicMeta),

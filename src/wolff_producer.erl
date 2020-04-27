@@ -272,7 +272,7 @@ maybe_send_to_kafka_2(State) ->
       State
   end.
 
-is_idle(#{replayq := Q, send_reqs := SentReqs}) ->
+is_idle(#{replayq := Q, sent_reqs := SentReqs}) ->
   SentReqs =:= [] andalso replayq:count(Q) =:= 0.
 
 first_item_expire_time(#{replayq := Q, config := #{max_linger_ms := Max}}) ->
@@ -374,7 +374,7 @@ do_init(#{client_id := ClientId, conn := Conn, topic := Topic, partition := Part
   _ = erlang:send(self(), {leader_connection, Conn}),
   NewConfig = maps:without([replayq_dir, replayq_seg_bytes], Config),
   State#{replayq => Q, config := NewConfig, call_id_base => erlang:system_time(microsecond),
-    pending_acks => #{}, sent_regs => [], conn := undefined, client_id => ClientId}.
+    pending_acks => #{}, sent_reqs => [], conn := undefined, client_id => ClientId}.
 
 queue_item_sizer({_CallId, _Ts, Batch}) ->
   batch_size(Batch).

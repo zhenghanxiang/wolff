@@ -7,7 +7,10 @@
   {git,"https://github.com/ninenines/cowlib",
        {ref,"c6553f8308a2ca5dcd69d845f0a7d098c40c3363"}},
   2},
- {<<"crc32cer">>,{pkg,<<"crc32cer">>,<<"0.1.4">>},1},
+ {<<"crc32cer">>,
+  {git,"https://github.com/emqx/crc32cer",
+       {ref,"696bf41e1536fb21da07dd252174088164c72f51"}},
+  1},
  {<<"cuttlefish">>,
   {git,"https://github.com/emqx/cuttlefish",
        {ref,"c945f3f7eda02c1ac319776f5adc3781a1b0f9b6"}},
@@ -18,7 +21,7 @@
   1},
  {<<"emqx">>,
   {git,"https://github.com/emqx/emqx",
-       {ref,"d5f405259d756a655df5b15dc14f6e9c23dd2564"}},
+       {ref,"46137788395bdc7c5300dc833cf623f833ad3979"}},
   0},
  {<<"esockd">>,
   {git,"https://github.com/emqx/esockd",
@@ -39,7 +42,7 @@
   1},
  {<<"kafka_protocol">>,
   {git,"https://github.com/emqx/kafka_protocol.git",
-       {ref,"28154fa36a461c3946769d6aa3a126ae811bc4fd"}},
+       {ref,"37ce7a92452009c75ba992566a3e5d9ce7f68fba"}},
   0},
  {<<"ranch">>,
   {git,"https://github.com/ninenines/ranch",
@@ -53,7 +56,6 @@
   2}]}.
 [
 {pkg_hash,[
- {<<"crc32cer">>, <<"A656DFF19474D1A1FC5BB0081610AB6B0695B23AFFC47FA90ABEB079A8EF9752">>},
  {<<"gproc">>, <<"CEA02C578589C61E5341FCE149EA36CCEF236CC2ECAC8691FBA408E7EA77EC2F">>},
  {<<"replayq">>, <<"67CD31D351EBE4E6AEDB51FB798BA7C0F2E377DD2F1B6924A94C18773BAF9212">>},
  {<<"snappyer">>, <<"9154B9AC84031F0A799F72A4AA87DF23AB2193B5631475FA2CDC304382D2DF77">>}]}
