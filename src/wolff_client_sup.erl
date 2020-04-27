@@ -66,7 +66,7 @@ init([]) ->
   ?LOG(warning, "init..."),
   SupFlags = #{strategy => one_for_one, intensity => 10, period => 5},
   ChildSpecs = [],  %% 初始启动不指定子进程，以动态的方式添加
-  {ok, SupFlags, ChildSpecs}.
+  {ok, {SupFlags, ChildSpecs}}.
 
 
 %% internal func
