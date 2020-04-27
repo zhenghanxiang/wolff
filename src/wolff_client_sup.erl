@@ -34,9 +34,15 @@ ensure_present(ClientId, Hosts, Config) ->
   ?LOG(warning, "ensure present... ClientId: ~p, Hosts: ~p, Config: ~p", [ClientId, Hosts, Config]),
   ChildSpec = child_spec(ClientId, Hosts, Config),
   case supervisor:start_child(wolff_client_sup, ChildSpec) of
-    {ok, Pid} -> {ok, Pid};
-    {error, {already_started, Pid}} -> {ok, Pid};
-    {error, already_present} -> {error, client_not_running}
+    {ok, Pid} ->
+      ?LOG(warning, "add child process success. Pid: ~p", [Pid]),
+      {ok, Pid};
+    {error, {already_started, Pid}} ->
+      ?LOG(warning, "pid already_started. Pid: ~p", [Pid]),
+      {ok, Pid};
+    {error, already_present} ->
+      ?LOG(warning, "error! pid already_present"),
+      {error, client_not_running}
   end.
 
 -spec ensure_absence(ClientId) -> ok when
