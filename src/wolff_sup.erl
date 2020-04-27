@@ -39,10 +39,10 @@ init([]) ->
   {ok, {SupFlags, ChildSpecs}}.
 
 stats_worker() ->
-  ?LOG(warning, "stats woker..."),
+  ?LOG(warning, "stats worker..."),
   #{
     id => wolff_stats,
-    start => {wolff_stats, start_link, {}},
+    start => {wolff_stats, start_link, []},
     restart => permanent,
     shutdown => 2000,
     type => worker,
