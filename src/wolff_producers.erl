@@ -60,6 +60,7 @@ start_linked_producers(Client, Topic, ProducerCfg) ->
 
   case wolff_client:get_leader_connections(ClientPid, Topic) of
     {ok, Connections} ->
+      ?LOG(info, "get leader connections success...~n Connections: ~p", [Connections]),
       Workers = start_link_producers(ClientId, Topic, Connections, ProducerCfg),
       Partitioner = maps:get(partitioner, ProducerCfg, random),
       {ok, #{client => Client,
@@ -230,8 +231,10 @@ is_alive(Pid) ->
   is_pid(Pid) andalso is_process_alive(Pid).
 
 maybe_init_producers(#{ets := not_initialized, topic := Topic, client_id := ClientId, config := Config} = State) ->
+  ?LOG(info, "maybe init producers... ets =:= not_initialized"),
   case start_linked_producers(ClientId, Topic, Config) of
     {ok, #{workers := Workers}} ->
+      ?LOG(info, "start linked produces success...~n wokers: ~p", [Workers]),
       Ets = ets:new(get_name(Config), [protected, named_table]),
       true = ets:insert(Ets, maps:to_list(Workers)),
       State#{ets := Ets, partition_cnt => maps:size(Workers)};
@@ -246,7 +249,7 @@ maybe_restart_producers(#{ets := not_initialized} = State) ->
   ?LOG(info, "maybe restart producers... ets =:= not_initialized"),
   State;
 maybe_restart_producers(#{ets := Ets, client_id := ClientId, topic := Topic, config := Config} = State) ->
-  ?LOG(info, "maybe restart producers...~n State: ~p~", [State]),
+  ?LOG(info, "maybe restart producers...~n State: ~p", [State]),
   lists:foreach(
     fun({Partition, Pid}) ->
       case is_alive(Pid) of

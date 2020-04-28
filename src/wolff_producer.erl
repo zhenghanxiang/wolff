@@ -253,6 +253,7 @@ maybe_reply_queued({send, {Pid, Ref}, _, _}) ->
   erlang:send(Pid, {Ref, queued}).
 
 maybe_send_to_kafka(#{conn := Conn} = State) ->
+  ?LOG(info, "maybe send to kafka...~n State:~p", [State]),
   case is_idle(State) of
     true -> State;
     false when is_pid(Conn) -> maybe_send_to_kafka_2(State);
@@ -260,6 +261,7 @@ maybe_send_to_kafka(#{conn := Conn} = State) ->
   end.
 
 maybe_send_to_kafka_2(State) ->
+  ?LOG(info, "maybe send to kafka2...~n State:~p", [State]),
   LingerTimeout = first_item_expire_time(State),
   IsTimedOut = is_integer(LingerTimeout) andalso LingerTimeout =< 0,
   case is_send_ahead_allowed(State) andalso (is_queued_enough_bytes(State) orelse IsTimedOut) of
@@ -346,6 +348,7 @@ evaluate_pending_ack_funs(PendingAcks, [{CallId, BatchSize} | Rest], BaseOffset)
 ensure_delayed_reconnect(#{config := #{reconnect_delay_ms := Delay},
   client_id := ClientId, topic := Topic, partition := Partition,
   reconnect_timer := no_timer} = State) ->
+  ?LOG(info, "ensure delayed reconnect...~n State: ~p", [State]),
   NewDelay = Delay + rand:uniform(1000),
   case wolff_client_sup:find_client(ClientId) of
     {ok, ClientPid} ->
@@ -414,6 +417,7 @@ maybe_log_connection_down(Topic, Partition, _, Reason) ->
   ?LOG(warning, "Producer ~s-~p: Failed to reconnect. Reason: ~p", [Topic, Partition, Reason]).
 
 get_produce_version(#{conn := Conn} = State) when is_pid(Conn) ->
+  ?LOG(info, "get produce version...~n State: ~p", [State]),
   Vsn = case kpro:get_api_vsn_range(Conn, produce) of
           {ok, {_Min, Max}} -> Max;
           {error, _} -> 3

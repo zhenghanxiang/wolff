@@ -119,6 +119,7 @@ handle_call({get_leader_connections, Topic}, _From, State) ->
   case ensure_leader_connections(State, Topic) of
     {ok, NewState} ->
       Result = do_get_leader_connections(NewState, Topic),
+      ?LOG(info, "do get leader connections result: ~p", [Result]),
       {reply, {ok, Result}, NewState};
     {error, Reason} ->
       {reply, {error, Reason}, State}
@@ -183,6 +184,7 @@ do_close_connection(Pid) ->
   end.
 
 ensure_leader_connections(State, Topic) ->
+  ?LOG(info, "ensure leader connections...~n State: ~p~n Topic: ~p", [State, Topic]),
   case is_metadata_fresh(State, Topic) of
     true -> {ok, State};
     false -> do_ensure_leader_connections(State, Topic)

@@ -52,7 +52,7 @@ ensure_absence(ClientId, Name) ->
 
 %% 回调接口
 init([]) ->
-  ?LOG(warning, "init..."),
+  ?LOG(info, "init..."),
   SupFlags = #{strategy => one_for_one, intensity => 10, period => 5},
   ChildSpecs = [], %% 动态添加子进程
   {ok, {SupFlags, ChildSpecs}}.
