@@ -60,7 +60,7 @@ ensure_absence(ClientId) ->
 find_client(ClientId) ->
   ?LOG(warning, "find client... ClientId: ~p", [ClientId]),
   Children = supervisor:which_children(wolff_client_sup),
-  ?LOG("Children: ~p", [Children]),
+  ?LOG(warning, "Children: ~p", [Children]),
   case lists:keyfind(ClientId, 1, Children) of
     {ClientId, Client, _, _} when is_pid(Client) -> {ok, Client};
     {ClientId, Restarting, _, _} -> {error, Restarting};
