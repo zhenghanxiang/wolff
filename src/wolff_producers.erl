@@ -98,10 +98,13 @@ pick_producer(#{workers := Workers, partition_cnt := Count, partitioner := Parti
   do_pick_producer(Partitioner, Partition, Count, Workers).
 
 lookup_producer(#{workers := Workers}, Partition) ->
+  ?LOG(info, "lookup producer 1..."),
   lookup_producer(Workers, Partition);
 lookup_producer(Workers, Partition) when is_map(Workers) ->
+  ?LOG(info, "lookup producer 2..."),
   maps:get(Partition, Workers);
 lookup_producer(Workers, Partition) ->
+  ?LOG(info, "lookup producer 3..."),
   [{Partition, Pid}] = ets:lookup(Workers, Partition),
   Pid.
 
@@ -187,10 +190,13 @@ start_link_producers(ClientId, Topic, Connections, ProducerCfg) ->
     end, #{}, Connections).
 
 pick_partition(_Count, Partition, _) when is_integer(Partition) ->
+  ?LOG(info, "pick partition integer... Partition: ~p", [Partition]),
   Partition;
 pick_partition(Count, random, _) ->
+  ?LOG(info, "pick partition random..."),
   rand:uniform(Count) - 1;
 pick_partition(Count, roundrobin, _) ->
+  ?LOG(info, "pick partition roundrobin..."),
   Partition = case get(wolff_roundrobin) of
                 undefined -> 0;
                 Number -> Number
@@ -198,10 +204,14 @@ pick_partition(Count, roundrobin, _) ->
   _ = put(wolff_roundrobin, (Partition + 1) rem Count),
   Partition;
 pick_partition(Count, first_key_dispatch, [#{key := Key} | _]) ->
+  ?LOG(info, "pick partition first_key_dispatch... Key: ~p", [Key]),
   erlang:phash2(Key) rem Count;
-pick_partition(Count, F, Batch) -> F(Count, Batch).
+pick_partition(Count, F, Batch) ->
+  ?LOG(info, "pick partition fun..."),
+  F(Count, Batch).
 
 do_pick_producer(Partitioner, Partition, Count, Workers) ->
+  ?LOG(info, "do pick producer...~n Partitioner: ~p~n Partition: ~p~n Count: ~p~n Workers: ~p", [Partitioner, Partition, Count, Workers]),
   Pid = lookup_producer(Workers, Partition),
   case is_pid(Pid) andalso is_process_alive(Pid) of
     true -> {Partition, Pid};

@@ -72,15 +72,18 @@ stop_and_delete_supervised_producers(Producers) ->
 
 -spec send(producers(), [msg()], ack_fun()) -> {partition(), pid()}.
 send(Producers, Batch, AckFun) ->
+  ?LOG(info, "send...~n Producers: ~p~n Batch: ~p~n AckFun: ~p", [Producers, Batch, AckFun]),
   {Partition, ProducerPid} = wolff_producers:pick_producer(Producers, Batch),
   ok = wolff_producer:send(ProducerPid, Batch, AckFun),
   {Partition, ProducerPid}.
 
 -spec send_sync(producers(), [msg()], timeout()) -> {partition(), offset()}.
 send_sync(Producers, Batch, Timeout) ->
+  ?LOG(info, "send sync...~n Producers: ~p~n Batch: ~p~n Timeout: ~p", [Producers, Batch, Timeout]),
   {_Partition, ProducerPid} = wolff_producers:pick_producer(Producers, Batch),
   wolff_producer:send_sync(ProducerPid, Batch, Timeout).
 
 -spec get_producer(producers(), partition()) -> pid().
 get_producer(Producers, Partition) ->
+  ?LOG(info, "get producer...~n Producers: ~p~n Partition: ~p", [Producers, Partition]),
   wolff_producers:lookup_producer(Producers, Partition).

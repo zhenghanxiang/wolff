@@ -91,9 +91,11 @@ send_sync(Pid, Batch, Timeout) ->
   erlang:send(Pid, {send, no_queued_reply, NewBatch, AckFun}),
   receive
     {MonitorRef, Partition, BaseOffset} ->
+      ?LOG(info, "send sync success...~n Pid: ~p~n Partition: ~p~n BaseOffset: ~p", [Pid, Partition, BaseOffset]),
       erlang:demonitor(MonitorRef, [flush]),
       {Partition, BaseOffset};
     {'DOWN', MonitorRef, _, _, Reason} ->
+      ?LOG(error, "send sync fail...~n Pid: ~p~n Reason: ~p", [Pid, Reason]),
       erlang:error({producer_down, Reason})
   after Timeout ->
     erlang:demonitor(MonitorRef, [flush]),
@@ -179,8 +181,8 @@ code_change(_OldVsn, State, _Extra) ->
   ?LOG(info, "code change... State: ~p", [State]),
   {ok, State}.
 
-terminate(_, #{replayq := Q}) ->
-  ?LOG(info, "terminate... Q: ~p", [Q]),
+terminate(_Info, #{replayq := Q}) ->
+  ?LOG(info, "terminate... _Info: ~p, Q: ~p", [_Info, Q]),
   ok = replayq:close(Q);
 terminate(_, _) ->
   ?LOG(info, "terminate..."),
@@ -210,12 +212,16 @@ use_defaults(Config, [{K, V} | Rest]) ->
   end.
 
 collect_send_calls(Calls, Count, Size, Limit) when Size >= Limit ->
+  ?LOG(info, "collect send calls...~n Size: ~p~n Limit: ~p", [Size, Limit]),
   {lists:reverse(Calls), Count, Size};
 collect_send_calls(Calls, Count, Size, Limit) ->
+  ?LOG(info, "collect send calls...~n Calls: ~p~n Count: ~p~n Size: ~p~n Limit: ~p", [Calls, Count, Size, Limit]),
   receive
     {send, _, Batch, _} = Call ->
+      ?LOG(info, "collect send calls receive...~n Call: ~p", [Call]),
       collect_send_calls([Call | Calls], Count + 1, Size + batch_size(Batch), Limit)
   after 0 ->
+    ?LOG(info, "collect send calls after..."),
     {lists:reverse(Calls), Count, Size}
   end.
 
@@ -255,9 +261,15 @@ maybe_reply_queued({send, {Pid, Ref}, _, _}) ->
 maybe_send_to_kafka(#{conn := Conn} = State) ->
   ?LOG(info, "maybe send to kafka...~n State:~p", [State]),
   case is_idle(State) of
-    true -> State;
-    false when is_pid(Conn) -> maybe_send_to_kafka_2(State);
-    false -> ensure_delayed_reconnect(State)
+    true ->
+      ?LOG(info, "is idle true..."),
+      State;
+    false when is_pid(Conn) ->
+      ?LOG(info, "is idle false... Pid: ~", [Conn]),
+      maybe_send_to_kafka_2(State);
+    false ->
+      ?LOG(info, "is idle false..."),
+      ensure_delayed_reconnect(State)
   end.
 
 maybe_send_to_kafka_2(State) ->
@@ -265,7 +277,9 @@ maybe_send_to_kafka_2(State) ->
   LingerTimeout = first_item_expire_time(State),
   IsTimedOut = is_integer(LingerTimeout) andalso LingerTimeout =< 0,
   case is_send_ahead_allowed(State) andalso (is_queued_enough_bytes(State) orelse IsTimedOut) of
-    true -> send_to_kafka(State);
+    true ->
+      ?LOG(info, "allow send to kafka"),
+      send_to_kafka(State);
     false ->
       case is_integer(LingerTimeout) andalso LingerTimeout > 0 of
         true -> erlang:send_after(LingerTimeout, self(), linger_expire);
@@ -285,7 +299,7 @@ first_item_expire_time(#{replayq := Q, config := #{max_linger_ms := Max}}) ->
 
 get_item_ts({_, Ts, _}) -> Ts.
 
-is_send_ahead_allowed(#{config := #{max_send_ahead := Max}, sent_regs := Sent}) ->
+is_send_ahead_allowed(#{config := #{max_send_ahead := Max}, sent_reqs := Sent}) ->
   length(Sent) - 1 < Max.
 
 is_queued_enough_bytes(#{replayq := Q, config := #{min_batch_bytes := Min}}) ->
@@ -296,6 +310,7 @@ send_to_kafka(#{sent_reqs := Sent, replayq := Q,
   config := #{max_batch_bytes := BytesLimit, required_acks := RequiredAcks,
     ack_timeout := AckTimeout, compression := Compression},
   conn := Conn, produce_api_vsn := Vsn, topic := Topic, partition := Partition} = State) ->
+  ?LOG(info, "send to kafka...~n State: ~p", [State]),
   {NewQ, QAckRef, Items} = replayq:pop(Q, #{bytes_limit => BytesLimit, count_limit => 999999999}),
   {FlatBatch, Calls} = get_flat_batch(Items, [], []),
   [_ | _] = FlatBatch, %% 无用代码
@@ -316,6 +331,7 @@ get_flat_batch([QItem | Rest], Messages, Calls) ->
   get_flat_batch(Rest, lists:reverse(Batch, Messages), [{CallId, length(Batch)} | Calls]).
 
 request_async(Conn, Req) when is_pid(Conn) ->
+  ?LOG(info, "request async...~n Conn: ~p~n Req: ~p", [Conn, Req]),
   ok = kpro:send(Conn, Req).
 
 send_stats(#{client_id := ClientId, topic := Topic, partition := Partition}, Batch) ->
