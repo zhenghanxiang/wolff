@@ -168,6 +168,7 @@ close_connection(Conn) ->
   ok.
 
 do_close_connection(Pid) ->
+  ?LOG(info, "do close connection Pid: ~p", [Pid]),
   MonitorRef = erlang:monitor(process, Pid),
   erlang:send(Pid, {{self(), MonitorRef}, stop}),
   receive
@@ -177,6 +178,7 @@ do_close_connection(Pid) ->
     {'DOWN', MonitorRef, _, _, Reason} ->
       {error, {connection_down, Reason}}
   after 5000 ->
+    ?LOG(info, "do close connection timeout... force kill process"),
     exit(Pid, kill)
   end.
 
@@ -214,6 +216,7 @@ do_ensure_leader_connections(#{connect := ConnectFun,
   end.
 
 ensure_leader_connection(#{connect := ConnectFun, conns := Connections} = State, Brokers, Topic, P_Meta) ->
+  ?LOG(info, "ensure leader connection...~n Brokers: ~p~n Topic: ~p~n P_Meta: ~p~n State: ~p", [Brokers, Topic, P_Meta, State]),
   Leaders = maps:get(leaders, State, #{}),
   ErrorCode = kpro:find(error_code, P_Meta),
   ErrorCode =:= no_error orelse erlang:error(ErrorCode),
@@ -253,6 +256,7 @@ get_metadata([Host | Rest], ConnectFun, Topic, Errors) ->
         {_, Vsn} = maps:get(metadata, Versions),
         do_get_metadata(Vsn, Pid, Topic)
       after
+        ?LOG(info, "close connection"),
         _ = close_connection(Pid)
       end;
     {error, Reason} ->
@@ -319,6 +323,7 @@ add_conn({error, Reason}, ConnId, Connections) ->
   Connections#{ConnId => Reason}.
 
 do_get_leader_connections(#{conns := Connections} = State, Topic) ->
+  ?LOG(info, "do get leader connections...~n State: ~p~n Topic: ~p", [State, Topic]),
   FindInMap =
     case get_connection_strategy(State) of
       per_partition -> Connections;

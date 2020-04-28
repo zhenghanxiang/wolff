@@ -242,8 +242,11 @@ maybe_init_producers(#{ets := not_initialized, topic := Topic, client_id := Clie
   end;
 maybe_init_producers(State) -> State.
 
-maybe_restart_producers(#{ets := not_initialized} = State) -> State;
+maybe_restart_producers(#{ets := not_initialized} = State) ->
+  ?LOG(info, "maybe restart producers... ets =:= not_initialized"),
+  State;
 maybe_restart_producers(#{ets := Ets, client_id := ClientId, topic := Topic, config := Config} = State) ->
+  ?LOG(info, "maybe restart producers...~n State: ~p~", [State]),
   lists:foreach(
     fun({Partition, Pid}) ->
       case is_alive(Pid) of

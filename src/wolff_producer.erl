@@ -414,9 +414,8 @@ maybe_log_connection_down(Topic, Partition, _, Reason) ->
   ?LOG(warning, "Producer ~s-~p: Failed to reconnect. Reason: ~p", [Topic, Partition, Reason]).
 
 get_produce_version(#{conn := Conn} = State) when is_pid(Conn) ->
-  Vsn = case kpro:get_api_versions(Conn, produce) of
-          {ok, {_Min, Max}} ->
-            Max;
+  Vsn = case kpro:kpro:get_api_vsn_range(Conn, produce) of
+          {ok, {_Min, Max}} -> Max;
           {error, _} -> 3
         end,
   State#{produce_api_vsn => Vsn}.
