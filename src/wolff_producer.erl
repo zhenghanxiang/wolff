@@ -103,7 +103,7 @@ send_sync(Pid, Batch, Timeout) ->
 %% 回调接口
 init(State) ->
   ?LOG(warning, "init... State: ~p", [State]),
-  erlang:process_flag(trace_exit, true),
+  erlang:process_flag(trap_exit, true),
   self() ! {do_init, State},
   {ok, #{}}.
 

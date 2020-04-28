@@ -107,7 +107,7 @@ lookup_producer(Workers, Partition) ->
 %% 回调接口
 init({ClientId, Topic, Config}) ->
   ?LOG(warning, "init... ClientId: ~p, Topic: ~p, Config: ~p", [ClientId, Topic, Config]),
-  erlang:process_flag(trace_exit, true),
+  erlang:process_flag(trap_exit, true),
   self() ! rediscover_client,
   {ok, #{client_id => ClientId,
     client_pid => false,
