@@ -265,6 +265,7 @@ do_get_metadata(Vsn, Connection, Topic) ->
   ?LOG(info, "do_get_metadata Req: ~p", [Req]),
   case kpro:request_sync(Connection, Req, 10000) of
     {ok, #kpro_rsp{msg = Meta}} ->
+      ?LOG(info, "Meta: ~p", [Meta]),
       BrokersMeta = kpro:find(brokers, Meta),
       ?LOG(info, "BrokersMeta: ~p", [BrokersMeta]),
       Brokers = [parse_broker_meta(M) || M <- BrokersMeta],
@@ -281,7 +282,7 @@ do_get_metadata(Vsn, Connection, Topic) ->
   end.
 
 parse_broker_meta(BrokerMeta) ->
-  ?LOG(warning, "parse broker meta BrokerMeta: ~p", [BrokerMeta]),
+  ?LOG(info, "parse broker meta BrokerMeta: ~p", [BrokerMeta]),
   BrokerId = kpro:find(node_id, BrokerMeta),
   Host = kpro:find(host, BrokerMeta),
   Port = kpro:find(port, BrokerMeta),
