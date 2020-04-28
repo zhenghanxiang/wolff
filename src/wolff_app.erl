@@ -14,9 +14,9 @@
 -export([start/2, stop/1]).
 
 start(_StartType, _StartArgs) ->
-  ?LOG(warning, "start..."),
+  ?LOG(info, "start..."),
   wolff_sup:start_link().
 
 stop(_State) ->
-  ?LOG(warning, "stop..."),
+  ?LOG(info, "stop..."),
   ok.

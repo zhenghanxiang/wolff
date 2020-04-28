@@ -30,7 +30,7 @@ start_link() ->
 %%                  type => worker(),       % optional
 %%                  modules => modules()}   % optional
 init([]) ->
-  ?LOG(warning, "init..."),
+  ?LOG(info, "init..."),
   SupFlags = #{strategy => one_for_all,
     intensity => 10,
     period => 5},
@@ -39,7 +39,7 @@ init([]) ->
   {ok, {SupFlags, ChildSpecs}}.
 
 stats_worker() ->
-  ?LOG(warning, "stats worker..."),
+  ?LOG(info, "stats worker..."),
   #{
     id => wolff_stats,
     start => {wolff_stats, start_link, []},
@@ -50,7 +50,7 @@ stats_worker() ->
   }.
 
 client_sup() ->
-  ?LOG(warning, "client sup..."),
+  ?LOG(info, "client sup..."),
   #{
     id => wolff_client_sup,
     start => {wolff_client_sup, start_link, []},
@@ -61,7 +61,7 @@ client_sup() ->
   }.
 
 producers_sup() ->
-  ?LOG(warning, "producers sup..."),
+  ?LOG(info, "producers sup..."),
   #{
     id => wolff_producers_sup,
     start => {wolff_producers_sup, start_link, []},

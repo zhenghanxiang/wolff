@@ -22,27 +22,27 @@
 
 %% export fun
 start_link() ->
-  ?LOG(warning, "start link..."),
+  ?LOG(info, "start link..."),
   gen_server:start_link({local, wolff_stats}, wolff_stats, [], []).
 
 recv(ClientId, Topic, Partition, #{cnt := Cnt, oct := Oct} = Numbers) ->
-  ?LOG(warning, "recv... ClientId: ~p, Topic: ~p, Partition: ~p, Numbers: ~p", [ClientId, Topic, Partition, Numbers]),
+  ?LOG(info, "recv... ClientId: ~p, Topic: ~p, Partition: ~p, Numbers: ~p", [ClientId, Topic, Partition, Numbers]),
   ok = bump_counter({recv_cnt, ClientId, Topic, Partition}, Cnt),
   ok = bump_counter({recv_oct, ClientId, Topic, Partition}, Oct),
   gen_server:cast(wolff_stats, {recv, Numbers}).
 
 sent(ClientId, Topic, Partition, #{cnt := Cnt, oct := Oct} = Numbers) ->
-  ?LOG(warning, "sent... ClientId: ~p, Topic: ~p, Partition: ~p, Numbers: ~p", [ClientId, Topic, Partition, Numbers]),
+  ?LOG(info, "sent... ClientId: ~p, Topic: ~p, Partition: ~p, Numbers: ~p", [ClientId, Topic, Partition, Numbers]),
   ok = bump_counter({send_cnt, ClientId, Topic, Partition}, Cnt),
   ok = bump_counter({send_oct, ClientId, Topic, Partition}, Oct),
   gen_server:cast(wolff_stats, {sent, Numbers}).
 
 get_stats() ->
-  ?LOG(warning, "get stats..."),
+  ?LOG(info, "get stats..."),
   gen_server:call(wolff_stats, get_stats, infinity).
 
 get_stats(ClientId, Topic, Partition) ->
-  ?LOG(warning, "get stats... ClientId: ~p, Topic: ~p, Partition: ~p", [ClientId, Topic, Partition]),
+  ?LOG(info, "get stats... ClientId: ~p, Topic: ~p, Partition: ~p", [ClientId, Topic, Partition]),
   #{
     send_cnt => get_counter({send_cnt, ClientId, Topic, Partition}),
     send_oct => get_counter({send_oct, ClientId, Topic, Partition}),
@@ -52,7 +52,7 @@ get_stats(ClientId, Topic, Partition) ->
 
 %% gen_server callback fun
 init([]) ->
-  ?LOG(warning, "init..."),
+  ?LOG(info, "init..."),
   {ok, #{
     ets => ets:new(wolff_stats, [
       named_table, public, {write_concurrency, true}]),
@@ -63,35 +63,35 @@ init([]) ->
   }}.
 
 handle_cast({recv, Numbers}, #{recv_oct := TotalOct, recv_cnt := TotalCnt} = State) ->
-  ?LOG(warning, "handle case recv... State: ~p", [State]),
+  ?LOG(info, "handle case recv... State: ~p", [State]),
   #{cnt := Cnt, oct := Oct} = Numbers,
   {noreply, State#{recv_oct := TotalOct + Oct, recv_cnt := TotalCnt + Cnt}};
 handle_cast({sent, Numbers}, #{sent_oct := TotalOct, sent_cnt := TotalCnt} = State) ->
-  ?LOG(warning, "handle case sent... State: ~p", [State]),
+  ?LOG(info, "handle case sent... State: ~p", [State]),
   #{cnt := Cnt, oct := Oct} = Numbers,
   {noreply, State#{sent_oct := TotalOct + Oct, sent_cnt := TotalCnt + Cnt}};
 handle_cast(_Cast, _State) ->
-  ?LOG(warning, "handle case... _Cast: ~p, _State: ~p", [_Cast, _State]),
+  ?LOG(info, "handle case... _Cast: ~p, _State: ~p", [_Cast, _State]),
   {noreply, _State}.
 
 handle_call(get_stats, _From, State) ->
-  ?LOG(warning, "handle call get_stats... State: ~p", [State]),
+  ?LOG(info, "handle call get_stats... State: ~p", [State]),
   Result = maps:with([send_cnt, send_oct, recv_cnt, recv_oct], State),
   {reply, Result, State};
 handle_call(_Call, _Form, State) ->
-  ?LOG(warning, "handle call... _Call: ~p,  State: ~p", [_Call, State]),
+  ?LOG(info, "handle call... _Call: ~p,  State: ~p", [_Call, State]),
   {noreply, State}.
 
 handle_info(_Info, State) ->
-  ?LOG(warning, "handle_info: ~p, State: ~p", [_Info, State]),
+  ?LOG(info, "handle_info: ~p, State: ~p", [_Info, State]),
   {noreply, State}.
 
 code_change(_OldVsn, State, _Extra) ->
-  ?LOG(warning, "code_change! OldVsn: ~p, State: ~p, _Extra: ~p", [_OldVsn, State, _Extra]),
+  ?LOG(info, "code_change! OldVsn: ~p, State: ~p, _Extra: ~p", [_OldVsn, State, _Extra]),
   {ok, State}.
 
 terminate(_Reason, _State) ->
-  ?LOG(warning, "terminate! _Reason: ~p", [_Reason]),
+  ?LOG(info, "terminate! _Reason: ~p", [_Reason]),
   ok.
 
 %% internal fun

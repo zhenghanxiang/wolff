@@ -40,7 +40,7 @@ topic => kpro:topic()
 
 %% 对外接口
 start_link(ClientId, Topic, Config) ->
-  ?LOG(warning, "start link... ClientId: ~p, Topic: ~p, Config: ~p", [ClientId, Topic, Config]),
+  ?LOG(info, "start link... ClientId: ~p, Topic: ~p, Config: ~p", [ClientId, Topic, Config]),
   Name = get_name(Config),
   gen_server:start_link({local, Name}, wolff_producers, {ClientId, Topic, Config}, []).
 
@@ -49,7 +49,7 @@ start_link(ClientId, Topic, Config) ->
   Topic :: topic(),
   ProducerCfg :: config().
 start_linked_producers(Client, Topic, ProducerCfg) ->
-  ?LOG(warning, "start linked producers... Client: ~p, Topic: ~p, ProducerCfg: ~p", [Client, Topic, ProducerCfg]),
+  ?LOG(info, "start linked producers... Client: ~p, Topic: ~p, ProducerCfg: ~p", [Client, Topic, ProducerCfg]),
   {ClientId, ClientPid} =
     case is_binary(Client) of
       true ->
@@ -71,12 +71,12 @@ start_linked_producers(Client, Topic, ProducerCfg) ->
   end.
 
 stop_linked(#{workers := Workers}) when is_map(Workers) ->
-  ?LOG(warning, "stop linked... Workers: ~p", [Workers]),
+  ?LOG(info, "stop linked... Workers: ~p", [Workers]),
   lists:foreach(fun({_, Pid}) -> wolff_producer:stop(Pid) end, maps:to_list(Workers)).
 
 -spec start_supervised(wolff:client_id(), topic(), config()) -> {ok, producers()}.
 start_supervised(ClientId, Topic, ProducerCfg) ->
-  ?LOG(warning, "start supervised... ClientId: ~p, Topic: ~p, ProducerCfg: ~p", [ClientId, Topic, ProducerCfg]),
+  ?LOG(info, "start supervised... ClientId: ~p, Topic: ~p, ProducerCfg: ~p", [ClientId, Topic, ProducerCfg]),
   {ok, Pid} = wolff_producers_sup:ensure_present(ClientId, Topic, ProducerCfg),
   case gen_server:call(Pid, get_workers, infinity) of
     {0, not_initialized} ->
@@ -87,12 +87,12 @@ start_supervised(ClientId, Topic, ProducerCfg) ->
   end.
 
 stop_supervised(#{client := ClientId, workers := Workers}) ->
-  ?LOG(warning, "stop supervised... ClientId: ~p, Workers: ~p", [ClientId, Workers]),
+  ?LOG(info, "stop supervised... ClientId: ~p, Workers: ~p", [ClientId, Workers]),
   wolff_producers_sup:ensure_absence(ClientId, Workers).
 
 -spec pick_producer(producers(), [wolff:msg()]) -> {partition(), pid()}.
 pick_producer(#{workers := Workers, partition_cnt := Count, partitioner := Partitioner}, Batch) ->
-  ?LOG(warning, "pick producer... Workers: ~p, Count: ~p, Partitioner: ~p, Batch: ~p", [Workers, Count, Partitioner, Batch]),
+  ?LOG(info, "pick producer... Workers: ~p, Count: ~p, Partitioner: ~p, Batch: ~p", [Workers, Count, Partitioner, Batch]),
   Partition = pick_partition(Count, Partitioner, Batch),
   do_pick_producer(Partitioner, Partition, Count, Workers).
 
@@ -106,7 +106,7 @@ lookup_producer(Workers, Partition) ->
 
 %% 回调接口
 init({ClientId, Topic, Config}) ->
-  ?LOG(warning, "init... ClientId: ~p, Topic: ~p, Config: ~p", [ClientId, Topic, Config]),
+  ?LOG(info, "init... ClientId: ~p, Topic: ~p, Config: ~p", [ClientId, Topic, Config]),
   erlang:process_flag(trap_exit, true),
   self() ! rediscover_client,
   {ok, #{client_id => ClientId,
@@ -117,7 +117,7 @@ init({ClientId, Topic, Config}) ->
     partition_cnt => 0}}.
 
 handle_info(rediscover_client, #{client_id := ClientId, client_pid := false} = State) ->
-  ?LOG(warning, "handle info rediscover_client... State: ~p", [State]),
+  ?LOG(info, "handle info rediscover_client... State: ~p", [State]),
   State1 = State#{rediscover_client_tref => false},
   case wolff_client_sup:find_client(ClientId) of
     {ok, Pid} ->
@@ -127,24 +127,24 @@ handle_info(rediscover_client, #{client_id := ClientId, client_pid := false} = S
       NewState = maybe_restart_producers(State3),
       {noreply, NewState};
     {error, Reason} ->
-      ?LOG(warning, "Failed to discover client, reason = ~p", [Reason])
+      ?LOG(info, "Failed to discover client, reason = ~p", [Reason])
   end;
 handle_info(init_producers, State) ->
-  ?LOG(warning, "handle info init_producers... State: ~p", [State]),
+  ?LOG(info, "handle info init_producers... State: ~p", [State]),
   {noreply, maybe_init_producers(State)};
 handle_info({'DOWN', _, process, Pid, Reason}, #{client_id := ClientId, client_pid := Pid} = State) ->
-  ?LOG(warning, "handle info DOWN... Client ~p (pid = ~p) down, reason: ~p", [ClientId, Pid, Reason]),
+  ?LOG(info, "handle info DOWN... Client ~p (pid = ~p) down, reason: ~p", [ClientId, Pid, Reason]),
   {noreply, ensure_rediscover_client_timer(State#{client_pid := false})};
 handle_info({'EXIT', Pid, Reason},
     #{ets := Ets, topic := Topic, client_id := ClientId, client_pid := ClientPid, config := Config} = State) ->
-  ?LOG(warning, "handle info EXIT... State: ~p", [State]),
+  ?LOG(info, "handle info EXIT... State: ~p", [State]),
   case ets:match(Ets, {'$1', Pid}) of
     [] ->
-      ?LOG(warning, "Unknown EXIT message of pid ~p reason: ~p", [Pid, Reason]);
+      ?LOG(info, "Unknown EXIT message of pid ~p reason: ~p", [Pid, Reason]);
     [[Partition]] ->
       case is_alive(ClientPid) of
         true ->
-          ?LOG(warning, "Producer ~s-~p (pid = ~p) down\nreason: ~p", [Topic, Partition, Pid, Reason]),
+          ?LOG(info, "Producer ~s-~p (pid = ~p) down\nreason: ~p", [Topic, Partition, Pid, Reason]),
           ok = start_producer_and_insert_pid(Ets, ClientId, Topic, Partition, Config);
         false ->
           ets:insert(Ets, {Partition, {down, Reason}})
@@ -152,26 +152,26 @@ handle_info({'EXIT', Pid, Reason},
   end,
   {noreply, State};
 handle_info(Req, State) ->
-  ?LOG(warning, "handle info... Unknown info ~p", [Req]),
+  ?LOG(info, "handle info... Unknown info ~p", [Req]),
   {noreply, State}.
 
 handle_call(get_workers, _From, #{ets := Ets, partition_cnt := Cnt} = State) ->
-  ?LOG(warning, "handle call get_workers... State: ~p", State),
+  ?LOG(info, "handle call get_workers... State: ~p", State),
   {reply, {Cnt, Ets}, State};
 handle_call(Req, From, State) ->
-  ?LOG(warning, "handle call... Unknown call ~p from ~p", [Req, From]),
+  ?LOG(info, "handle call... Unknown call ~p from ~p", [Req, From]),
   {reply, {error, unknown_call}, State}.
 
 handle_cast(Req, State) ->
-  ?LOG(warning, "handle cast... Unknown cast ~p", [Req]),
+  ?LOG(info, "handle cast... Unknown cast ~p", [Req]),
   {noreply, State}.
 
 code_change(_OldVsn, State, _Extra) ->
-  ?LOG(warning, "code change..."),
+  ?LOG(info, "code change..."),
   {ok, State}.
 
 terminate(_, _State) ->
-  ?LOG(warning, "terminate... State: ~p", [_State]),
+  ?LOG(info, "terminate... State: ~p", [_State]),
   ok.
 
 %% 内部接口
@@ -236,7 +236,7 @@ maybe_init_producers(#{ets := not_initialized, topic := Topic, client_id := Clie
       true = ets:insert(Ets, maps:to_list(Workers)),
       State#{ets := Ets, partition_cnt => maps:size(Workers)};
     {error, Reason} ->
-      ?LOG(warning, "Failed to init producers for topic ~s, reason: ~p", [Topic, Reason]),
+      ?LOG(info, "Failed to init producers for topic ~s, reason: ~p", [Topic, Reason]),
       erlang:send_after(1000, self(), init_producers),
       State
   end;

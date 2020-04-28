@@ -22,7 +22,7 @@
 
 %% export fun
 start_link() ->
-  ?LOG(warning, "start link..."),
+  ?LOG(info, "start link..."),
   supervisor:start_link({local, wolff_client_sup}, wolff_client_sup, []).
 
 -spec ensure_present(ClientId, Hosts, Config) -> Result when
@@ -31,24 +31,24 @@ start_link() ->
   Config :: wolff_client:config(),
   Result :: {'ok', pid()} | {'error', client_not_running}.
 ensure_present(ClientId, Hosts, Config) ->
-  ?LOG(warning, "ensure present... ClientId: ~p, Hosts: ~p, Config: ~p", [ClientId, Hosts, Config]),
+  ?LOG(info, "ensure present... ClientId: ~p, Hosts: ~p, Config: ~p", [ClientId, Hosts, Config]),
   ChildSpec = child_spec(ClientId, Hosts, Config),
   case supervisor:start_child(wolff_client_sup, ChildSpec) of
     {ok, Pid} ->
-      ?LOG(warning, "add child process success. Pid: ~p", [Pid]),
+      ?LOG(info, "add child process success. Pid: ~p", [Pid]),
       {ok, Pid};
     {error, {already_started, Pid}} ->
-      ?LOG(warning, "pid already_started. Pid: ~p", [Pid]),
+      ?LOG(info, "pid already_started. Pid: ~p", [Pid]),
       {ok, Pid};
     {error, already_present} ->
-      ?LOG(warning, "error! pid already_present"),
+      ?LOG(info, "error! pid already_present"),
       {error, client_not_running}
   end.
 
 -spec ensure_absence(ClientId) -> ok when
   ClientId :: wolff:client_id().
 ensure_absence(ClientId) ->
-  ?LOG(warning, "ensure absence... ClientId: ~p", [ClientId]),
+  ?LOG(info, "ensure absence... ClientId: ~p", [ClientId]),
   case supervisor:terminate_child(wolff_client_sup, ClientId) of
     ok -> supervisor:delete_child(wolff_client_sup, ClientId);
     {error, not_found} -> ok
@@ -58,18 +58,18 @@ ensure_absence(ClientId) ->
   ClientId :: wolff:client_id(),
   Result :: {'ok', pid()} | {'error', any()}.
 find_client(ClientId) ->
-  ?LOG(warning, "find client... ClientId: ~p", [ClientId]),
+  ?LOG(info, "find client... ClientId: ~p", [ClientId]),
   Children = supervisor:which_children(wolff_client_sup),
-  ?LOG(warning, "Children: ~p", [Children]),
+  ?LOG(info, "Children: ~p", [Children]),
   case lists:keyfind(ClientId, 1, Children) of
-    {ClientId, Client, _, _} when is_pid(Client) -> {ok, Client};
+    {ClientId, Pid, _, _} when is_pid(Pid) -> {ok, Pid};
     {ClientId, Restarting, _, _} -> {error, Restarting};
     false -> erlang:error({no_such_client, ClientId})
   end.
 
 %% supervisor callback fun
 init([]) ->
-  ?LOG(warning, "init..."),
+  ?LOG(info, "init..."),
   SupFlags = #{strategy => one_for_one, intensity => 10, period => 5},
   ChildSpecs = [],  %% 初始启动不指定子进程，以动态的方式添加
   {ok, {SupFlags, ChildSpecs}}.
