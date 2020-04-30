@@ -52,7 +52,7 @@ leaders => #{{topic(), partition()} => connection()}
   Hosts :: [host()],
   Config :: config().
 start_link(ClientId, Hosts, Config) ->
-  ?LOG(info, "start link... ClientId: ~p, Hosts: ~p, Config: ~p", [ClientId, Hosts, Config]),
+  ?LOG(info, "start link...~n ClientId: ~p~n Hosts: ~p~n Config: ~p", [ClientId, Hosts, Config]),
   {ConnectCfg, MyCfg} = split_config(Config),
   ConnCfg = ConnectCfg#{client_id => ClientId},
   State = #{
@@ -73,14 +73,14 @@ start_link(ClientId, Hosts, Config) ->
   Pid :: pid(),
   Reply :: term().
 stop(Pid) ->
-  ?LOG(info, "stop... Pid: ~p", [Pid]),
+  ?LOG(info, "stop...~n Pid: ~p", [Pid]),
   gen_server:call(Pid, stop, infinity).
 
 -spec get_id(Pid) -> Reply when
   Pid :: pid(),
   Reply :: term().
 get_id(Pid) ->
-  ?LOG(info, "get_id... Pid: ~p", [Pid]),
+  ?LOG(info, "get_id...~n Pid: ~p", [Pid]),
   gen_server:call(Pid, get_id, infinity).
 
 -spec get_leader_connections(ClientPid, Topic) -> Reply when
@@ -88,7 +88,7 @@ get_id(Pid) ->
   Topic :: topic(),
   Reply :: term().
 get_leader_connections(ClientPid, Topic) ->
-  ?LOG(info, "get_leader_connections... ClientPid: ~p, Topic: ~p", [ClientPid, Topic]),
+  ?LOG(info, "get_leader_connections...~n ClientPid: ~p~n Topic: ~p", [ClientPid, Topic]),
   gen_server:call(ClientPid, {get_leader_connections, Topic}, infinity).
 
 -spec recv_leader_connection(Client, Topic, Partition, Pid) -> 'ok' when
@@ -97,25 +97,25 @@ get_leader_connections(ClientPid, Topic) ->
   Partition :: partition(),
   Pid :: pid().
 recv_leader_connection(Client, Topic, Partition, Pid) ->
-  ?LOG(info, "recv_leader_connection... Client: ~p, Topic: ~p, Partition: ~p, Pid: ~p", [Client, Topic, Partition, Pid]),
+  ?LOG(info, "recv_leader_connection...~n Client: ~p~n Topic: ~p~n Partition: ~p~n Pid: ~p", [Client, Topic, Partition, Pid]),
   gen_server:cast(Client, {recv_leader_connection, Topic, Partition, Pid}).
 
 %% 回调接口
 init(State) ->
-  ?LOG(info, "init... State: ~p", [State]),
+  ?LOG(info, "init...~n State: ~p", [State]),
   erlang:process_flag(trap_exit, true),
   {ok, State}.
 
 handle_call(stop, From, #{conns := Connections} = State) ->
-  ?LOG(info, "handle_call stop... State: ~p", [State]),
+  ?LOG(info, "handle_call stop...~n State: ~p", [State]),
   ok = close_connections(Connections),
   gen_server:reply(From, ok),
   {stop, normal, State#{conns := #{}}};
 handle_call(get_id, _From, #{client_id := Id} = State) ->
-  ?LOG(info, "handle_call get_id... State: ~p", [State]),
+  ?LOG(info, "handle_call get_id...~n State: ~p", [State]),
   {reply, Id, State};
 handle_call({get_leader_connections, Topic}, _From, State) ->
-  ?LOG(info, "handle_call get_leader_connections... Topic: ~p, State: ~p", [Topic, State]),
+  ?LOG(info, "handle_call get_leader_connections...~n Topic: ~p~n State: ~p", [Topic, State]),
   case ensure_leader_connections(State, Topic) of
     {ok, NewState} ->
       Result = do_get_leader_connections(NewState, Topic),
@@ -127,11 +127,11 @@ handle_call({get_leader_connections, Topic}, _From, State) ->
 handle_call(_Req, _From, State) -> {noreply, State}.
 
 handle_info(_Info, State) ->
-  ?LOG(info, "handle_info... _Info: ~p, State: ~p", [_Info, State]),
+  ?LOG(info, "handle_info...~n _Info: ~p~n State: ~p", [_Info, State]),
   {noreply, State}.
 
 handle_cast({recv_leader_connection, Topic, Partition, Pid}, State) ->
-  ?LOG(info, "handle_cast recv_leader_connection... Topic: ~p, Partition: ~p, Pid: ~p, State: ~p", [Topic, Partition, Pid, State]),
+  ?LOG(info, "handle_cast recv_leader_connection...~n Topic: ~p~n Partition: ~p~n Pid: ~p~n State: ~p", [Topic, Partition, Pid, State]),
   case ensure_leader_connections(State, Topic) of
     {ok, NewState} ->
       Partitions = do_get_leader_connections(NewState, Topic),
@@ -143,14 +143,14 @@ handle_cast({recv_leader_connection, Topic, Partition, Pid}, State) ->
       {noreply, State}
   end;
 handle_cast(_Req, State) ->
-  ?LOG(info, "handle_cast... _Req: ~p, State: ~p", [_Req, State]),
+  ?LOG(info, "handle_cast...~n _Req: ~p~n State: ~p", [_Req, State]),
   {noreply, State}.
 
 code_change(_OldVsn, State, _Extra) ->
   {ok, State}.
 
 terminate(_, #{conns := Connections} = State) ->
-  ?LOG(info, "terminate... State: ~p", [State]),
+  ?LOG(info, "terminate...~n State: ~p", [State]),
   ok = close_connections(Connections),
   {ok, State#{conns := #{}}}.
 
@@ -190,9 +190,9 @@ ensure_leader_connections(State, Topic) ->
     false -> do_ensure_leader_connections(State, Topic)
   end.
 
-is_metadata_fresh(#{metadata_ts := Topics, config := Config}, Topic) ->
+is_metadata_fresh(#{metadata_ts := MetadataTs, config := Config}, Topic) ->
   MinInterval = maps:get(min_metadata_refresh_interval, Config, 1000),
-  case maps:get(Topic, Topics, false) of
+  case maps:get(Topic, MetadataTs, false) of
     false -> false;
     Ts -> timer:now_diff(erlang:timestamp(), Ts) < MinInterval * 1000
   end.
@@ -200,17 +200,17 @@ is_metadata_fresh(#{metadata_ts := Topics, config := Config}, Topic) ->
 do_ensure_leader_connections(#{connect := ConnectFun,
   seed_hosts := SeedHosts, metadata_ts := MetadataTs} = State, Topic) ->
   case get_metadata(SeedHosts, ConnectFun, Topic, []) of
-    {ok, {Brokers, Partitions}} ->
+    {ok, {Brokers, P_Metadata}} ->
       NewState = lists:foldl(
-        fun(Partition, StateIn) ->
+        fun(P_Meta, StateIn) ->
           try
-            ensure_leader_connection(StateIn, Brokers, Topic, Partition)
+            ensure_leader_connection(StateIn, Brokers, Topic, P_Meta)
           catch
             error : Reason ->
-              ?LOG(info, "Bad metadata for ~p-~p, Reason=~p", [Topic, Partition, Reason]),
+              ?LOG(info, "Bad metadata for ~p-~p, Reason=~p", [Topic, P_Meta, Reason]),
               StateIn
           end
-        end, State, Partitions),
+        end, State, P_Metadata),
       {ok, NewState#{metadata_ts := MetadataTs#{Topic => erlang:timestamp()}}};
     {error, Reason} ->
       ?LOG(info, "Failed to get metadata! Reason: ~p", [Reason]),
@@ -222,12 +222,12 @@ ensure_leader_connection(#{connect := ConnectFun, conns := Connections} = State,
   Leaders = maps:get(leaders, State, #{}),
   ErrorCode = kpro:find(error_code, P_Meta),
   ErrorCode =:= no_error orelse erlang:error(ErrorCode),
-  PartitionNum = kpro:find(partition, P_Meta),
+  P_Num = kpro:find(partition, P_Meta),
   LeaderBrokerId = kpro:find(leader, P_Meta),
   {_, Host} = lists:keyfind(LeaderBrokerId, 1, Brokers),
   Strategy = get_connection_strategy(State),
   ConnId = case Strategy of
-             per_partition -> {Topic, PartitionNum};
+             per_partition -> {Topic, P_Num};
              per_broker -> Host
            end,
   NewConnections = case get_connected(ConnId, Host, Connections) of
@@ -241,7 +241,7 @@ ensure_leader_connection(#{connect := ConnectFun, conns := Connections} = State,
   NewState = State#{conns := NewConnections},
   case Strategy of
     per_broker ->
-      NewLeaders = Leaders#{{Topic, PartitionNum} => maps:get(ConnId, NewConnections)},
+      NewLeaders = Leaders#{{Topic, P_Num} => maps:get(ConnId, NewConnections)},
       NewState#{leaders => NewLeaders};
     _ -> NewState
   end.
@@ -255,6 +255,7 @@ get_metadata([Host | Rest], ConnectFun, Topic, Errors) ->
       ?LOG(info, "get metadata ConnectFun Pid: ~p", [Pid]),
       try
         {ok, Versions} = kpro:get_api_versions(Pid),
+        ?LOG(info, "Versions: ~p", [Versions]),
         {_, Vsn} = maps:get(metadata, Versions),
         do_get_metadata(Vsn, Pid, Topic)
       after
@@ -265,11 +266,11 @@ get_metadata([Host | Rest], ConnectFun, Topic, Errors) ->
       get_metadata(Rest, ConnectFun, Topic, [{Host, Reason} | Errors])
   end.
 
-do_get_metadata(Vsn, Connection, Topic) ->
-  ?LOG(info, "do get metadata Vsn: ~p, Connection: ~p, Topic: ~p", [Vsn, Connection, Topic]),
+do_get_metadata(Vsn, Pid, Topic) ->
+  ?LOG(info, "do get metadata...~n Vsn: ~p~n Pid: ~p~n Topic: ~p", [Vsn, Pid, Topic]),
   Req = kpro:make_request(metadata, Vsn, [{topics, [Topic]}, {allow_auto_topic_creation, false}]),
   ?LOG(info, "do_get_metadata Req: ~p", [Req]),
-  case kpro:request_sync(Connection, Req, 10000) of
+  case kpro:request_sync(Pid, Req, 10000) of
     {ok, #kpro_rsp{msg = Meta}} ->
       ?LOG(info, "Meta: ~p", [Meta]),
       BrokersMeta = kpro:find(brokers, Meta),
@@ -277,9 +278,9 @@ do_get_metadata(Vsn, Connection, Topic) ->
       Brokers = [parse_broker_meta(M) || M <- BrokersMeta],
       [TopicMeta] = kpro:find(topic_metadata, Meta),
       ErrorCode = kpro:find(error_code, TopicMeta),
-      Partitions = kpro:find(partition_metadata, TopicMeta),
+      P_Metadata = kpro:find(partition_metadata, TopicMeta),
       case ErrorCode =:= no_error of
-        true -> {ok, {Brokers, Partitions}};
+        true -> {ok, {Brokers, P_Metadata}};
         false -> {error, ErrorCode}
       end;
     {error, Reason} ->
@@ -304,7 +305,9 @@ get_connected(ConnId, Host, Connections) ->
   Pid = maps:get(ConnId, Connections, false),
   case is_connected(Pid, Host) of
     true -> already_connected;
-    false when is_pid(Pid) -> {needs_reconnect, Pid};
+    false when is_pid(Pid) ->
+      ?LOG(info, "get connected needs reconnect..."),
+      {needs_reconnect, Pid};
     false -> false
   end.
 

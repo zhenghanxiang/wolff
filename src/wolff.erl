@@ -37,13 +37,13 @@
   Hosts :: [host()],
   Config :: wolff_client:config().
 ensure_supervised_client(ClientId, Hosts, Config) ->
-  ?LOG(info, " ensure supervised client... ClientId: ~p, Hosts: ~p, Config: ~p", [ClientId, Hosts, Config]),
+  ?LOG(info, " ensure supervised client...~n ClientId: ~p~n Hosts: ~p~n Config: ~p", [ClientId, Hosts, Config]),
   wolff_client_sup:ensure_present(ClientId, Hosts, Config).
 
 -spec stop_and_delete_supervised_client(ClientId) -> ok when
   ClientId :: client_id().
 stop_and_delete_supervised_client(ClientId) ->
-  ?LOG(info, "stop and delete supervised client... ClientId: ~p", [ClientId]),
+  ?LOG(info, "stop and delete supervised client...~n ClientId: ~p", [ClientId]),
   wolff_client_sup:ensure_absence(ClientId).
 
 -spec start_producers(Client, Topic, ProducerCfg) -> {ok, producers()} | {error, any()} when
@@ -51,23 +51,23 @@ stop_and_delete_supervised_client(ClientId) ->
   Topic :: topic(),
   ProducerCfg :: producer_cfg().
 start_producers(Client, Topic, ProducerCfg) when is_pid(Client) ->
-  ?LOG(info, "start producers... Client: ~p, Topic: ~p, ProducerCfg: ~p", [Client, Topic, ProducerCfg]),
+  ?LOG(info, "start producers...~n Client: ~p~n Topic: ~p~n ProducerCfg: ~p", [Client, Topic, ProducerCfg]),
   wolff_producers:start_linked_producers(Client, Topic, ProducerCfg).
 
 -spec stop_producers(#{workers := map(), _ => _}) -> ok.
 stop_producers(Producers) ->
-  ?LOG(info, "stop producers... Produces: ~p", [Producers]),
+  ?LOG(info, "stop producers...~n Produces: ~p", [Producers]),
   wolff_producers:stop_linked(Producers).
 
 -spec ensure_supervised_producers(client_id(), topic(),
     producer_cfg()) -> {ok, producers()} | {error, any()}.
 ensure_supervised_producers(ClientId, Topic, ProducerCfg) ->
-  ?LOG(info, "ensure supervised producers... ClientId: ~p, Topic: ~p, ProducerCfg: ~p", [ClientId, Topic, ProducerCfg]),
+  ?LOG(info, "ensure supervised producers...~n ClientId: ~p~n Topic: ~p~n ProducerCfg: ~p", [ClientId, Topic, ProducerCfg]),
   wolff_producers:start_supervised(ClientId, Topic, ProducerCfg).
 
 -spec stop_and_delete_supervised_producers(#{client := client_id(), topic := topic(), _ => _}) -> ok |{error, any()}.
 stop_and_delete_supervised_producers(Producers) ->
-  ?LOG(info, "stop producers... Produces: ~p", [Producers]),
+  ?LOG(info, "stop producers...~n Produces: ~p", [Producers]),
   wolff_producers:stop_supervised(Producers).
 
 -spec send(producers(), [msg()], ack_fun()) -> {partition(), pid()}.

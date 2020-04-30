@@ -31,7 +31,7 @@ start_link() ->
   Config :: wolff_client:config(),
   Result :: {'ok', pid()} | {'error', client_not_running}.
 ensure_present(ClientId, Hosts, Config) ->
-  ?LOG(info, "ensure present... ClientId: ~p, Hosts: ~p, Config: ~p", [ClientId, Hosts, Config]),
+  ?LOG(info, "ensure present...~n ClientId: ~p~n Hosts: ~p~n Config: ~p", [ClientId, Hosts, Config]),
   ChildSpec = child_spec(ClientId, Hosts, Config),
   case supervisor:start_child(wolff_client_sup, ChildSpec) of
     {ok, Pid} ->

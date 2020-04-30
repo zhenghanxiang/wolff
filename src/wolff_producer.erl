@@ -47,7 +47,7 @@ compression => kpro:compress_option()
 -spec start_link(wolff:client_id(), topic(), partition(), pid() | {down, any()}, config()) ->
   {ok, pid()} | {error, any()}.
 start_link(ClientId, Topic, Partition, MaybeConnPid, Config) ->
-  ?LOG(info, "start link... ClientId: ~p, Topic: ~p, Partition: ~p, MaybeConnPid: ~p, Config: ~p",
+  ?LOG(info, "start link...~n ClientId: ~p~n Topic: ~p~n Partition: ~p~n MaybeConnPid: ~p~n Config: ~p",
     [ClientId, Topic, Partition, MaybeConnPid, Config]),
   State = #{
     client_id => ClientId,
@@ -65,7 +65,7 @@ stop(Pid) ->
 
 -spec send(pid(), [wolff:msg()], wolff:ack_fun()) -> ok.
 send(Pid, [_ | _] = Batch, AckFun) ->
-  ?LOG(info, "send... Pid: ~p, Batch: ~p, AckFun: ~p", [Pid, Batch, AckFun]),
+  ?LOG(info, "send...~n Pid: ~p~n Batch: ~p~n AckFun: ~p", [Pid, Batch, AckFun]),
   Caller = self(),
   MonitorRef = erlang:monitor(process, Pid),
   NewBatch = ensure_ts(Batch),
@@ -79,7 +79,7 @@ send(Pid, [_ | _] = Batch, AckFun) ->
 
 -spec send_sync(pid(), [wolff:msg()], timeout()) -> {partition(), offset()}.
 send_sync(Pid, Batch, Timeout) ->
-  ?LOG(info, "send sync... Pid: ~p, Batch: ~p, Timeout: ~p", [Pid, Batch, Timeout]),
+  ?LOG(info, "send sync...~n Pid: ~p~n, Batch: ~p~n, Timeout: ~p", [Pid, Batch, Timeout]),
   Caller = self(),
   MonitorRef = erlang:monitor(process, Pid),
   AckFun =
@@ -114,13 +114,13 @@ handle_call(stop, From, State) ->
   gen_server:reply(From, ok),
   {stop, normal, State};
 handle_call(_Req, _From, State) ->
-  ?LOG(info, "handle call... _Req: ~p, State: ~p", [_Req, State]),
+  ?LOG(info, "handle call...~n _Req: ~p~n State: ~p", [_Req, State]),
   {noreply, State}.
 
 handle_info({send, _, Batch, _} = Req,
     #{client_id := ClientId, topic := Topic, partition := Partition,
       config := #{max_batch_bytes := Limit}} = State) ->
-  ?LOG(info, "handle info send... Req: ~p, State: ~p", [Req, State]),
+  ?LOG(info, "handle info send...~n Req: ~p~n, State: ~p", [Req, State]),
   {Calls, Cnt, Oct} = collect_send_calls([Req], 1, batch_size(Batch), Limit),
   ok = wolff_stats:recv(ClientId, Topic, Partition, #{cnt => Cnt, oct => Oct}),
   NewState = maybe_send_to_kafka(enqueue_calls(Calls, State)),
@@ -133,7 +133,7 @@ handle_info(linger_expire, State) ->
   ?LOG(info, "handle info linger_expire... State: ~p", [State]),
   {noreply, maybe_send_to_kafka(State)};
 handle_info({msg, Conn, Rsp}, #{conn := Conn} = State) ->
-  ?LOG(info, "handle info msg... Conn: ~p, Rsp: ~p, State: ~p", [Conn, Rsp, State]),
+  ?LOG(info, "handle info msg...~n Conn: ~p~n Rsp: ~p~n State: ~p", [Conn, Rsp, State]),
   try handle_kafka_ack(Rsp, State) of
     TempState -> NewState = maybe_send_to_kafka(TempState),
       {noreply, NewState}
@@ -142,7 +142,7 @@ handle_info({msg, Conn, Rsp}, #{conn := Conn} = State) ->
     {noreply, NewState}
   end;
 handle_info({leader_connection, Conn}, State) when is_pid(Conn) ->
-  ?LOG(info, "handle info leader_connection... Conn: ~p, State: ~p", [Conn, State]),
+  ?LOG(info, "handle info leader_connection...~n Conn: ~p~n State: ~p", [Conn, State]),
   _ = erlang:monitor(process, Conn),
   State1 = State#{reconnect_timer => no_timer, conn := Conn},
   State2 = get_produce_version(State1),
@@ -150,39 +150,39 @@ handle_info({leader_connection, Conn}, State) when is_pid(Conn) ->
   NewState = maybe_send_to_kafka(State3),
   {noreply, NewState};
 handle_info({leader_connection, {down, Reason}}, State) ->
-  ?LOG(info, "handle info leader_connection down... Reason: ~p, State: ~p", [Reason, State]),
+  ?LOG(info, "handle info leader_connection down...~n Reason: ~p~n State: ~p", [Reason, State]),
   NewState = mark_connection_down(State#{reconnect_timer => no_timer}, Reason),
   {noreply, NewState};
 handle_info({leader_connection, {error, Reason}}, State) ->
-  ?LOG(info, "handle info leader_connection error... Reason: ~p, State: ~p", [Reason, State]),
+  ?LOG(info, "handle info leader_connection error...~n Reason: ~p~n State: ~p", [Reason, State]),
   NewState = mark_connection_down(State#{reconnect_timer => no_timer}, Reason),
   {noreply, NewState};
 handle_info(reconnect, State) ->
-  ?LOG(info, "handle info reconnect... State: ~p", [State]),
+  ?LOG(info, "handle info reconnect...~n State: ~p", [State]),
   NewState = State#{reconnect_timer => no_timer},
   {noreply, ensure_delayed_reconnect(NewState)};
 handle_info({'DOWN', _, _, Conn, Reason}, #{conn := Conn} = State) ->
-  ?LOG(info, "handle info DOWN... Conn: ~p, Reason: ~p, State: ~p", [Conn, Reason, State]),
+  ?LOG(info, "handle info DOWN...~n Conn: ~p~n Reason: ~p~n State: ~p", [Conn, Reason, State]),
   #{reconnect_timer := no_timer} = State,
   NewState = mark_connection_down(State, Reason),
   {noreply, NewState};
 handle_info({'EXIT', _, Reason}, State) ->
-  ?LOG(info, "handle info EXIT... Reason: ~p, State: ~p", [Reason, State]),
+  ?LOG(info, "handle info EXIT...~n Reason: ~p~n State: ~p", [Reason, State]),
   {stop, Reason, State};
 handle_info(_Req, State) ->
-  ?LOG(info, "handle info... _Req: ~p, State: ~p", [_Req, State]),
+  ?LOG(info, "handle info...~n _Req: ~p~n State: ~p", [_Req, State]),
   {noreply, State}.
 
 handle_cast(_Req, State) ->
-  ?LOG(info, "handle cast... _Req: ~p, State: ~p", [_Req, State]),
+  ?LOG(info, "handle cast...~n _Req: ~p~n State: ~p", [_Req, State]),
   {noreply, State}.
 
 code_change(_OldVsn, State, _Extra) ->
-  ?LOG(info, "code change... State: ~p", [State]),
+  ?LOG(info, "code change...~n State: ~p", [State]),
   {ok, State}.
 
 terminate(_Info, #{replayq := Q}) ->
-  ?LOG(info, "terminate... _Info: ~p, Q: ~p", [_Info, Q]),
+  ?LOG(info, "terminate...~n _Info: ~p~n Q: ~p", [_Info, Q]),
   ok = replayq:close(Q);
 terminate(_, _) ->
   ?LOG(info, "terminate..."),
@@ -339,7 +339,11 @@ send_stats(#{client_id := ClientId, topic := Topic, partition := Partition}, Bat
   ok = wolff_stats:sent(ClientId, Topic, Partition, #{cnt => Cnt, oct => Oct}).
 
 maybe_fake_kafka_ack(#kpro_req{no_ack = true, ref = Ref}, State) ->
-  do_handle_kafka_ack(Ref, -1, State).
+  ?LOG(info, "maybe fake kafka ack..."),
+  do_handle_kafka_ack(Ref, -1, State);
+maybe_fake_kafka_ack(_Req, State) ->
+  ?LOG(info, "maybe fake kafka ack...~n _Req: ~p~n State: ~p", [_Req, State]),
+  State.
 
 do_handle_kafka_ack(Ref, BaseOffset,
     #{sent_reqs := [{#kpro_req{ref = Ref}, Q_AckRef, Calls} | Rest],
@@ -380,6 +384,7 @@ ensure_delayed_reconnect(#{config := #{reconnect_delay_ms := Delay},
 ensure_delayed_reconnect(State) -> State.
 
 do_init(#{client_id := ClientId, conn := Conn, topic := Topic, partition := Partition, config := Config} = State) ->
+  ?LOG(info, "do init..."),
   QConfig =
     case maps:get(replayq_dir, Config, false) of
       false -> #{mem_only => true};

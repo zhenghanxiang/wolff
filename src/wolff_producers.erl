@@ -53,9 +53,12 @@ start_linked_producers(Client, Topic, ProducerCfg) ->
   {ClientId, ClientPid} =
     case is_binary(Client) of
       true ->
+        ?LOG(info, "通过ClientId查找Pid"),
         {ok, Pid} = wolff_client_sup:find_client(Client),
         {Client, Pid};
-      false -> {wolff_client:get_id(Client), Client}
+      false ->
+        ?LOG(info, "通过Pid查找ClientId"),
+        {wolff_client:get_id(Client), Client}
     end,
 
   case wolff_client:get_leader_connections(ClientPid, Topic) of
@@ -79,6 +82,7 @@ stop_linked(#{workers := Workers}) when is_map(Workers) ->
 start_supervised(ClientId, Topic, ProducerCfg) ->
   ?LOG(info, "start supervised... ClientId: ~p, Topic: ~p, ProducerCfg: ~p", [ClientId, Topic, ProducerCfg]),
   {ok, Pid} = wolff_producers_sup:ensure_present(ClientId, Topic, ProducerCfg),
+  ?LOG(info, "start supervised after..."),
   case gen_server:call(Pid, get_workers, infinity) of
     {0, not_initialized} ->
       {error, failed_to_initialize_producers_in_time};
@@ -113,6 +117,7 @@ init({ClientId, Topic, Config}) ->
   ?LOG(info, "init... ClientId: ~p, Topic: ~p, Config: ~p", [ClientId, Topic, Config]),
   erlang:process_flag(trap_exit, true),
   self() ! rediscover_client,
+  ?LOG(info, "send rediscover client exec..."),
   {ok, #{client_id => ClientId,
     client_pid => false,
     topic => Topic,
@@ -160,7 +165,7 @@ handle_info(Req, State) ->
   {noreply, State}.
 
 handle_call(get_workers, _From, #{ets := Ets, partition_cnt := Cnt} = State) ->
-  ?LOG(info, "handle call get_workers... State: ~p", State),
+  ?LOG(info, "handle call get_workers... State: ~p", [State]),
   {reply, {Cnt, Ets}, State};
 handle_call(Req, From, State) ->
   ?LOG(info, "handle call... Unknown call ~p from ~p", [Req, From]),
@@ -214,10 +219,14 @@ do_pick_producer(Partitioner, Partition, Count, Workers) ->
   ?LOG(info, "do pick producer...~n Partitioner: ~p~n Partition: ~p~n Count: ~p~n Workers: ~p", [Partitioner, Partition, Count, Workers]),
   Pid = lookup_producer(Workers, Partition),
   case is_pid(Pid) andalso is_process_alive(Pid) of
-    true -> {Partition, Pid};
+    true ->
+      ?LOG(info, "is Pid and process alive... Pid: ~p", [Pid]),
+      {Partition, Pid};
     false when Partitioner =:= random ->
+      ?LOG(info, "false and random... Pid: ~p", [Pid]),
       pick_next_alive(Workers, Partition, Count);
     false when Partitioner =:= roundrobin ->
+      ?LOG(info, "false and roundrobin... Pid: ~p", [Pid]),
       R = {Partition, Pid} = pick_next_alive(Workers, Partition, Count),
       _ = put(wolff_roundrobin, (Partition + 1) rem Count),
       R;
@@ -231,6 +240,7 @@ pick_next_alive(Workers, Partition, Count) ->
 pick_next_alive(_Workers, _Partition, Count, Count) ->
   erlang:error(all_producers_down);
 pick_next_alive(Workers, Partition, Count, Tried) ->
+  ?LOG(info, "pick next alive... Workers: ~p, Partition: ~p, Count: ~p, Tried: ~p", [Workers, Partition, Count, Tried]),
   Pid = lookup_producer(Workers, Partition),
   case is_alive(Pid) of
     true -> {Partition, Pid};
@@ -263,7 +273,9 @@ maybe_restart_producers(#{ets := Ets, client_id := ClientId, topic := Topic, con
   lists:foreach(
     fun({Partition, Pid}) ->
       case is_alive(Pid) of
-        true -> ok;
+        true ->
+          ?LOG(info, "Pid is alive... Pid: ~p", [Pid]),
+          ok;
         false ->
           start_producer_and_insert_pid(Ets, ClientId, Topic, Partition, Config)
       end
@@ -275,6 +287,7 @@ ensure_rediscover_client_timer(#{rediscover_client_tref := false} = State) ->
   State#{rediscover_client_tref := TimerRef}.
 
 start_producer_and_insert_pid(Ets, ClientId, Topic, Partition, Config) ->
+  ?LOG(info, "start producer and insert pid..."),
   {ok, Pid} = wolff_producer:start_link(ClientId, Topic, Partition, {down, to_be_discovered}, Config),
   ets:insert(Ets, {Partition, Pid}),
   ok.
