@@ -222,12 +222,12 @@ ensure_leader_connection(#{connect := ConnectFun, conns := Connections} = State,
   Leaders = maps:get(leaders, State, #{}),
   ErrorCode = kpro:find(error_code, P_Meta),
   ErrorCode =:= no_error orelse erlang:error(ErrorCode),
-  P_Num = kpro:find(partition, P_Meta),
+  P_Idx = kpro:find(partition, P_Meta),
   LeaderBrokerId = kpro:find(leader, P_Meta),
   {_, Host} = lists:keyfind(LeaderBrokerId, 1, Brokers),
   Strategy = get_connection_strategy(State),
   ConnId = case Strategy of
-             per_partition -> {Topic, P_Num};
+             per_partition -> {Topic, P_Idx};
              per_broker -> Host
            end,
   NewConnections = case get_connected(ConnId, Host, Connections) of
@@ -241,7 +241,7 @@ ensure_leader_connection(#{connect := ConnectFun, conns := Connections} = State,
   NewState = State#{conns := NewConnections},
   case Strategy of
     per_broker ->
-      NewLeaders = Leaders#{{Topic, P_Num} => maps:get(ConnId, NewConnections)},
+      NewLeaders = Leaders#{{Topic, P_Idx} => maps:get(ConnId, NewConnections)},
       NewState#{leaders => NewLeaders};
     _ -> NewState
   end.

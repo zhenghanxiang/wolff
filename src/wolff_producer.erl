@@ -445,8 +445,11 @@ get_produce_version(#{conn := Conn} = State) when is_pid(Conn) ->
         end,
   State#{produce_api_vsn => Vsn}.
 
-resend_sent_reqs(#{sent_reqs := []} = State) -> State;
+resend_sent_reqs(#{sent_reqs := []} = State) ->
+  ?LOG(info, "resend sent reqs 1..."),
+  State;
 resend_sent_reqs(#{sent_reqs := SentReqs, conn := Conn} = State) ->
+  ?LOG(info, "resend sent reqs 2..."),
   F =
     fun({ReqIn, Q_AckRef, Calls}, Acc) ->
       Req = ReqIn#kpro_req{ref = make_ref()},

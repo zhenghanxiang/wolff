@@ -40,7 +40,7 @@ topic => kpro:topic()
 
 %% 对外接口
 start_link(ClientId, Topic, Config) ->
-  ?LOG(info, "start link... ClientId: ~p, Topic: ~p, Config: ~p", [ClientId, Topic, Config]),
+  ?LOG(info, "start link...~n ClientId: ~p~n Topic: ~p~n Config: ~p", [ClientId, Topic, Config]),
   Name = get_name(Config),
   gen_server:start_link({local, Name}, wolff_producers, {ClientId, Topic, Config}, []).
 
@@ -49,15 +49,15 @@ start_link(ClientId, Topic, Config) ->
   Topic :: topic(),
   ProducerCfg :: config().
 start_linked_producers(Client, Topic, ProducerCfg) ->
-  ?LOG(info, "start linked producers... Client: ~p, Topic: ~p, ProducerCfg: ~p", [Client, Topic, ProducerCfg]),
+  ?LOG(info, "start linked producers...~n Client: ~p~n Topic: ~p~n ProducerCfg: ~p", [Client, Topic, ProducerCfg]),
   {ClientId, ClientPid} =
     case is_binary(Client) of
       true ->
-        ?LOG(info, "通过ClientId查找Pid"),
+        ?LOG(info, "Check Pid By ClientId"),
         {ok, Pid} = wolff_client_sup:find_client(Client),
         {Client, Pid};
       false ->
-        ?LOG(info, "通过Pid查找ClientId"),
+        ?LOG(info, "Check ClientId By Pid"),
         {wolff_client:get_id(Client), Client}
     end,
 
@@ -97,24 +97,24 @@ stop_supervised(#{client := ClientId, workers := Workers}) ->
 
 -spec pick_producer(producers(), [wolff:msg()]) -> {partition(), pid()}.
 pick_producer(#{workers := Workers, partition_cnt := Count, partitioner := Partitioner}, Batch) ->
-  ?LOG(info, "pick producer... Workers: ~p, Count: ~p, Partitioner: ~p, Batch: ~p", [Workers, Count, Partitioner, Batch]),
-  Partition = pick_partition(Count, Partitioner, Batch),
-  do_pick_producer(Partitioner, Partition, Count, Workers).
+  ?LOG(info, "pick producer...~n Workers: ~p~n Count: ~p~n Partitioner: ~p~n Batch: ~p", [Workers, Count, Partitioner, Batch]),
+  Partition_Idx = pick_partition(Count, Partitioner, Batch),
+  do_pick_producer(Partitioner, Partition_Idx, Count, Workers).
 
-lookup_producer(#{workers := Workers}, Partition) ->
+lookup_producer(#{workers := Workers}, Partition_Idx) ->
   ?LOG(info, "lookup producer 1..."),
-  lookup_producer(Workers, Partition);
-lookup_producer(Workers, Partition) when is_map(Workers) ->
+  lookup_producer(Workers, Partition_Idx);
+lookup_producer(Workers, Partition_Idx) when is_map(Workers) ->
   ?LOG(info, "lookup producer 2..."),
-  maps:get(Partition, Workers);
-lookup_producer(Workers, Partition) ->
+  maps:get(Partition_Idx, Workers);
+lookup_producer(Workers, Partition_Idx) ->
   ?LOG(info, "lookup producer 3..."),
-  [{Partition, Pid}] = ets:lookup(Workers, Partition),
+  [{Partition_Idx, Pid}] = ets:lookup(Workers, Partition_Idx),
   Pid.
 
 %% 回调接口
 init({ClientId, Topic, Config}) ->
-  ?LOG(info, "init... ClientId: ~p, Topic: ~p, Config: ~p", [ClientId, Topic, Config]),
+  ?LOG(info, "init...~n ClientId: ~p~n Topic: ~p~n Config: ~p", [ClientId, Topic, Config]),
   erlang:process_flag(trap_exit, true),
   self() ! rediscover_client,
   ?LOG(info, "send rediscover client exec..."),
@@ -126,7 +126,7 @@ init({ClientId, Topic, Config}) ->
     partition_cnt => 0}}.
 
 handle_info(rediscover_client, #{client_id := ClientId, client_pid := false} = State) ->
-  ?LOG(info, "handle info rediscover_client... State: ~p", [State]),
+  ?LOG(info, "handle info rediscover_client...~n State: ~p", [State]),
   State1 = State#{rediscover_client_tref => false},
   case wolff_client_sup:find_client(ClientId) of
     {ok, Pid} ->
@@ -136,17 +136,18 @@ handle_info(rediscover_client, #{client_id := ClientId, client_pid := false} = S
       NewState = maybe_restart_producers(State3),
       {noreply, NewState};
     {error, Reason} ->
-      ?LOG(info, "Failed to discover client, reason = ~p", [Reason])
+      ?LOG(info, "Failed to discover client, reason = ~p", [Reason]),
+      {noreply, ensure_rediscover_client_timer(State1)}
   end;
 handle_info(init_producers, State) ->
-  ?LOG(info, "handle info init_producers... State: ~p", [State]),
+  ?LOG(info, "handle info init_producers...~n State: ~p", [State]),
   {noreply, maybe_init_producers(State)};
 handle_info({'DOWN', _, process, Pid, Reason}, #{client_id := ClientId, client_pid := Pid} = State) ->
-  ?LOG(info, "handle info DOWN... Client ~p (pid = ~p) down, reason: ~p", [ClientId, Pid, Reason]),
+  ?LOG(info, "handle info DOWN...~n Client ~p (pid = ~p) down, reason: ~p", [ClientId, Pid, Reason]),
   {noreply, ensure_rediscover_client_timer(State#{client_pid := false})};
 handle_info({'EXIT', Pid, Reason},
     #{ets := Ets, topic := Topic, client_id := ClientId, client_pid := ClientPid, config := Config} = State) ->
-  ?LOG(info, "handle info EXIT... State: ~p", [State]),
+  ?LOG(info, "handle info EXIT...~n State: ~p", [State]),
   case ets:match(Ets, {'$1', Pid}) of
     [] ->
       ?LOG(info, "Unknown EXIT message of pid ~p reason: ~p", [Pid, Reason]);
@@ -189,25 +190,25 @@ get_name(Config) ->
 
 start_link_producers(ClientId, Topic, Connections, ProducerCfg) ->
   lists:foldl(
-    fun({Partition, MaybeConnPid}, Acc) ->
-      {ok, WorkerPid} = wolff_producer:start_link(ClientId, Topic, Partition, MaybeConnPid, ProducerCfg),
-      Acc#{Partition => WorkerPid}
+    fun({Partition_Idx, MaybeConnPid}, Acc) ->
+      {ok, WorkerPid} = wolff_producer:start_link(ClientId, Topic, Partition_Idx, MaybeConnPid, ProducerCfg),
+      Acc#{Partition_Idx => WorkerPid}
     end, #{}, Connections).
 
-pick_partition(_Count, Partition, _) when is_integer(Partition) ->
-  ?LOG(info, "pick partition integer... Partition: ~p", [Partition]),
-  Partition;
+pick_partition(_Count, Partitioner, _) when is_integer(Partitioner) ->
+  ?LOG(info, "pick partition integer... Partitioner: ~p", [Partitioner]),
+  Partitioner;
 pick_partition(Count, random, _) ->
   ?LOG(info, "pick partition random..."),
   rand:uniform(Count) - 1;
 pick_partition(Count, roundrobin, _) ->
   ?LOG(info, "pick partition roundrobin..."),
-  Partition = case get(wolff_roundrobin) of
-                undefined -> 0;
-                Number -> Number
-              end,
-  _ = put(wolff_roundrobin, (Partition + 1) rem Count),
-  Partition;
+  Partition_Idx = case get(wolff_roundrobin) of
+                    undefined -> 0;
+                    Number -> Number
+                  end,
+  _ = put(wolff_roundrobin, (Partition_Idx + 1) rem Count),
+  Partition_Idx;
 pick_partition(Count, first_key_dispatch, [#{key := Key} | _]) ->
   ?LOG(info, "pick partition first_key_dispatch... Key: ~p", [Key]),
   erlang:phash2(Key) rem Count;
@@ -215,36 +216,36 @@ pick_partition(Count, F, Batch) ->
   ?LOG(info, "pick partition fun..."),
   F(Count, Batch).
 
-do_pick_producer(Partitioner, Partition, Count, Workers) ->
-  ?LOG(info, "do pick producer...~n Partitioner: ~p~n Partition: ~p~n Count: ~p~n Workers: ~p", [Partitioner, Partition, Count, Workers]),
-  Pid = lookup_producer(Workers, Partition),
+do_pick_producer(Partitioner, Partition_Idx, Count, Workers) ->
+  ?LOG(info, "do pick producer...~n Partitioner: ~p~n Partition_Idx: ~p~n Count: ~p~n Workers: ~p", [Partitioner, Partition_Idx, Count, Workers]),
+  Pid = lookup_producer(Workers, Partition_Idx),
   case is_pid(Pid) andalso is_process_alive(Pid) of
     true ->
       ?LOG(info, "is Pid and process alive... Pid: ~p", [Pid]),
-      {Partition, Pid};
+      {Partition_Idx, Pid};
     false when Partitioner =:= random ->
       ?LOG(info, "false and random... Pid: ~p", [Pid]),
-      pick_next_alive(Workers, Partition, Count);
+      pick_next_alive(Workers, Partition_Idx, Count);
     false when Partitioner =:= roundrobin ->
       ?LOG(info, "false and roundrobin... Pid: ~p", [Pid]),
-      R = {Partition, Pid} = pick_next_alive(Workers, Partition, Count),
-      _ = put(wolff_roundrobin, (Partition + 1) rem Count),
+      R = {Partition_Idx, Pid} = pick_next_alive(Workers, Partition_Idx, Count),
+      _ = put(wolff_roundrobin, (Partition_Idx + 1) rem Count),
       R;
     false ->
       erlang:error({producer_down, Pid})
   end.
 
-pick_next_alive(Workers, Partition, Count) ->
-  pick_next_alive(Workers, (Partition + 1) rem Count, Count, _Tried = 1).
+pick_next_alive(Workers, Partition_Idx, Count) ->
+  pick_next_alive(Workers, (Partition_Idx + 1) rem Count, Count, _Tried = 1).
 
-pick_next_alive(_Workers, _Partition, Count, Count) ->
+pick_next_alive(_Workers, _Partition_Idx, Count, Count) ->
   erlang:error(all_producers_down);
-pick_next_alive(Workers, Partition, Count, Tried) ->
-  ?LOG(info, "pick next alive... Workers: ~p, Partition: ~p, Count: ~p, Tried: ~p", [Workers, Partition, Count, Tried]),
-  Pid = lookup_producer(Workers, Partition),
+pick_next_alive(Workers, Partition_Idx, Count, Tried) ->
+  ?LOG(info, "pick next alive... Workers: ~p, Partition_Idx: ~p, Count: ~p, Tried: ~p", [Workers, Partition_Idx, Count, Tried]),
+  Pid = lookup_producer(Workers, Partition_Idx),
   case is_alive(Pid) of
-    true -> {Partition, Pid};
-    false -> pick_next_alive(Workers, (Partition + 1) rem Count, Count, Tried + 1)
+    true -> {Partition_Idx, Pid};
+    false -> pick_next_alive(Workers, (Partition_Idx + 1) rem Count, Count, Tried + 1)
   end.
 
 is_alive(Pid) ->
