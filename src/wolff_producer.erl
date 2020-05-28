@@ -79,7 +79,7 @@ send(Pid, [_ | _] = Batch, AckFun) ->
 
 -spec send_sync(pid(), [wolff:msg()], timeout()) -> {partition(), offset()}.
 send_sync(Pid, Batch, Timeout) ->
-  ?LOG(info, "send sync...~n Pid: ~p~n, Batch: ~p~n, Timeout: ~p", [Pid, Batch, Timeout]),
+  ?LOG(info, "send sync...~n Pid: ~p~n Batch: ~p~n Timeout: ~p", [Pid, Batch, Timeout]),
   Caller = self(),
   MonitorRef = erlang:monitor(process, Pid),
   AckFun =
@@ -120,7 +120,7 @@ handle_call(_Req, _From, State) ->
 handle_info({send, _, Batch, _} = Req,
     #{client_id := ClientId, topic := Topic, partition := Partition,
       config := #{max_batch_bytes := Limit}} = State) ->
-  ?LOG(info, "handle info send...~n Req: ~p~n, State: ~p", [Req, State]),
+  ?LOG(info, "handle info send...~n Req: ~p~n State: ~p", [Req, State]),
   {Calls, Cnt, Oct} = collect_send_calls([Req], 1, batch_size(Batch), Limit),
   ok = wolff_stats:recv(ClientId, Topic, Partition, #{cnt => Cnt, oct => Oct}),
   NewState = maybe_send_to_kafka(enqueue_calls(Calls, State)),
@@ -313,7 +313,7 @@ send_to_kafka(#{sent_reqs := Sent, replayq := Q,
   ?LOG(info, "send to kafka...~n State: ~p", [State]),
   {NewQ, QAckRef, Items} = replayq:pop(Q, #{bytes_limit => BytesLimit, count_limit => 999999999}),
   {FlatBatch, Calls} = get_flat_batch(Items, [], []),
-  [_ | _] = FlatBatch, %% 无用代码
+  [_ | _] = FlatBatch, %%
   Req = kpro_req_lib:produce(Vsn, Topic, Partition, FlatBatch, #{ack_timeout => AckTimeout,
     required_acks => RequiredAcks, compression => Compression}),
 

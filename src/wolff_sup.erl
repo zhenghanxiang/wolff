@@ -31,11 +31,13 @@ start_link() ->
 %%                  modules => modules()}   % optional
 init([]) ->
   ?LOG(info, "init..."),
+  {ok, _} = wolff_kafka_apis:start_link(),
+
   SupFlags = #{strategy => one_for_all,
     intensity => 10,
     period => 5},
 
-  ChildSpecs = [stats_worker(), client_sup(), producers_sup()],
+  ChildSpecs = [stats_worker(), client_sup(), producers_sup(), consumers_sup()],
   {ok, {SupFlags, ChildSpecs}}.
 
 stats_worker() ->
@@ -69,4 +71,15 @@ producers_sup() ->
     shutdown => infinity,
     type => supervisor,
     modules => [wolff_producers_sup]
+  }.
+
+consumers_sup() ->
+  ?LOG(info, "consumers sup..."),
+  #{
+    id => wolff_consumers_sup,
+    start => {wolff_consumers_sup, start_link, []},
+    restart => permanent,
+    shutdown => infinity,
+    type => supervisor,
+    modules => [wolff_consumers_sup]
   }.
