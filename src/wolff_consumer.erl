@@ -292,7 +292,7 @@ handle_info(?SEND_FETCH_REQUEST, State0) ->
   State = maybe_send_fetch_request(State0),
   {noreply, State};
 handle_info({msg, _Pid, Rsp}, State) ->
-  ?LOG(warning, "handle_info<<msg>>... Rsp:~p~n State:~p~n", [Rsp, State]),
+  ?LOG(info, "handle_info<<msg>>... Rsp:~p~n State:~p~n", [Rsp, State]),
   handle_fetch_response(Rsp, State);
 handle_info({'DOWN', _MonitorRef, process, Pid, _Reason}, #state{subscriber = Pid} = State) ->
   ?LOG(warning, "handle_info<<DOWN sub>>...~n _Reason:~p~n State:~p~n", [_Reason, State]),
