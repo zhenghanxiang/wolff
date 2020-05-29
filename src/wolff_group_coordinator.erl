@@ -623,6 +623,7 @@ do_stabilize([F | Rest], RetryFun, State) ->
     wolff:partition(), wolff:offset()) -> state().
 handle_ack(State, GenerationId, _Topic, _Partition, _Offset)
   when GenerationId < State#state.generationId ->
+  ?LOG(warning, "handle_ack... Input GenerationId(~p) less than State.generationId(~p)~n", [GenerationId, State#state.generationId]),
   State;
 handle_ack(#state{acked_offsets = AckedOffsets} = State, _GenerationId, Topic, Partition, Offset) ->
   NewAckedOffsets = merge_acked_offsets(AckedOffsets, [{{Topic, Partition}, Offset}]),
@@ -643,6 +644,7 @@ do_commit_offsets_(#state{groupId = GroupId,
   connection = Connection,
   offset_retention_seconds = OffsetRetention,
   acked_offsets = AckedOffsets} = State) ->
+  ?LOG(warning, "do_commit_offsets_...~n acked_offsets:~p~n", [AckedOffsets]),
   Metadata = make_offset_commit_metadata(),
   TopicOffsets = wolff_utils:group_per_key(
     fun({{Topic, Partition}, Offset}) ->
@@ -654,8 +656,9 @@ do_commit_offsets_(#state{groupId = GroupId,
       {Topic, PartitionOffset}
     end, AckedOffsets
   ),
+  ?LOG(warning, "do_commit_offsets_...~n TopicOffsets:~p~n", [TopicOffsets]),
   NewTopicOffsets = lists:map(
-    fun(Topic, PartitionOffsets) ->
+    fun({Topic, PartitionOffsets}) ->
       [
         {topic, Topic},
         {partitions, PartitionOffsets}
@@ -679,7 +682,8 @@ do_commit_offsets_(#state{groupId = GroupId,
   ResponseBody = send_sync(Connection, Request),
   Response = kpro:find(responses, ResponseBody),
   ok = assert_commit_response(Response),
-  {ok, State#state{acked_offsets = []}}.
+  NewState = State#state{acked_offsets = []},
+  {ok, NewState}.
 
 %% Add new offsets to be acked into the acked offsets collection.
 -spec merge_acked_offsets(Offsets, Offsets) -> Offsets when
@@ -851,6 +855,7 @@ get_topic_assignments(#state{} = State, Assignment) ->
     end, PartitionAssignments),
   TopicPartitions = lists:append(TopicPartitions0),
   CommittedOffsets = get_committed_offsets(State, TopicPartitions),
+  ?LOG(info, "get_topic_assignments... CommittedOffsets: ~p~n", [CommittedOffsets]),
   IsConsumerManaged = State#state.offset_commit_policy =:= consumer_managed,
   resolve_begin_offsets(TopicPartitions, CommittedOffsets, IsConsumerManaged).
 
@@ -926,8 +931,7 @@ maybe_upgrade_from_roundrobin_v1(Offset, Metadata) ->
   case is_roundrobin_v1_commit(Metadata) of
     false -> Offset;
     true -> Offset + 1
-  end,
-  ok.
+  end.
 
 %% Before roundrobin_v2, wolff had two versions of commit metadata:
 %% 1. "ts() node() pid()"

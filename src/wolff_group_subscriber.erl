@@ -315,9 +315,9 @@ init({ClientId, GroupId, Topics, GroupConfig, MessageType, CbModule, CbInitArgs}
   },
   {ok, State}.
 
-handle_info({_ConsumerPid, #kafka_message_set{} = MessageSet}, State) ->
-  ?LOG(info, "handle_info...~n _ConsumerPid:~p~n MessageSet:~p~n State:~p~n", [_ConsumerPid, MessageSet, State]),
-
+handle_info({_ConsumerPid, #kafka_message_set{} = MsgSet}, State0) ->
+  ?LOG(info, "handle_info...~n _ConsumerPid:~p~n MsgSet:~p~n State:~p~n", [_ConsumerPid, MsgSet, State0]),
+  State = handle_consumer_delivery(MsgSet, State0),
   {noreply, State};
 handle_info({'DOWN', MonitorRef, process, _Pid, _Reason}, #state{client_mref = MonitorRef} = State) ->
   ?LOG(warning, "handle_info<<DOWN client>>...~n _Pid:~p~n _Reason:~p~n State:~p~n", [_Pid, _Reason, State]),
@@ -413,7 +413,7 @@ handle_cast({commit_offset, Topic, Partition, Offset},
   {noreply, State};
 handle_cast({new_assignments, MemberId, GenerationId, TopicAssignments},
     #state{client_id = ClientId, consumer_config = ConsumerCfg, subscribe_tref = Timer} = State) ->
-  ?LOG(info, "handle_cast<<new_assignments>>...~n MemberId:~p~n GenerationId:~p~n TopicAssignments:~p~n State:~p~n", [MemberId, GenerationId, TopicAssignments, State]),
+  ?LOG(warning, "handle_cast<<new_assignments>>...~n MemberId:~p~n GenerationId:~p~n TopicAssignments:~p~n State:~p~n", [MemberId, GenerationId, TopicAssignments, State]),
   AllTopics = lists:map(
     fun(#wolff_received_assignment{topic = Topic}) ->
       Topic
@@ -450,6 +450,72 @@ terminate(_Reason, #state{}) -> ok.
 
 %%%_* Internal Functions =======================================================
 
+handle_consumer_delivery(#kafka_message_set{topic = Topic, partition = Partition, messages = Messages} = MsgSet,
+    #state{message_type = MessageType, consumers = Consumers0} = State0) ->
+  case get_consumer({Topic, Partition}, Consumers0) of
+    #consumer{} = C ->
+      Consumers = update_last_offset(Messages, C, Consumers0),
+      State = State0#state{consumers = Consumers},
+      case MessageType of
+        message ->
+          handle_messages(Topic, Partition, Messages, State);
+        message_set ->
+          handle_message_set(MsgSet, State)
+      end;
+    false ->
+      State0
+  end.
+
+update_last_offset(Messages, Consumer0, Consumers) ->
+  %% wolff_consumer never delivers empty message set, lists:last is safe
+  #kafka_message{offset = LastOffset} = lists:last(Messages),
+  Consumer = Consumer0#consumer{last_offset = LastOffset},
+  put_consumer(Consumer, Consumers).
+
+handle_messages(_Topic, _Partition, [], State) ->
+  State;
+handle_messages(Topic, Partition, [Msg | Rest], State) ->
+  #kafka_message{offset = Offset} = Msg,
+  #state{cb_module = CbModule, cb_state = CbState} = State,
+  AckRef = {Topic, Partition, Offset},
+  {AckNow, CommitNow, NewCbState} = case CbModule:handle_message(Topic, Partition, Msg, CbState) of
+                                      {ok, NewCbState_} ->
+                                        {false, false, NewCbState_};
+                                      {ok, ack, NewCbState_} ->
+                                        {true, true, NewCbState_};
+                                      Unknown ->
+                                        erlang:error(bad_return_value, {CbModule, handle_message, Unknown})
+                                    end,
+  State1 = State#state{cb_state = NewCbState},
+  NewState = case AckNow of
+               true -> handle_ack(AckRef, State1, CommitNow);
+               false -> State1
+             end,
+  handle_messages(Topic, Partition, Rest, NewState).
+
+handle_message_set(#kafka_message_set{topic = Topic, partition = Partition, messages = Messages} = MsgSet,
+    #state{cb_module = CbModule, cb_state = CbState} = State) ->
+  {AckNow, CommitNow, NewCbState} = case CbModule:handle_message(Topic, Partition, MsgSet, CbState) of
+                                      {ok, NewCbState_} ->
+                                        {false, false, NewCbState_};
+                                      {ok, ack, NewCbState_} ->
+                                        {true, true, NewCbState_};
+                                      {ok, ack_no_commit, NewCbState_} ->
+                                        {true, false, NewCbState_};
+                                      Unknown ->
+                                        erlang:error(bad_return_value, {CbModule, handle_message, Unknown})
+                                    end,
+  State1 = State#state{cb_state = NewCbState},
+  case AckNow of
+    true ->
+      LastMessage = lists:last(Messages),
+      LastOffset = LastMessage#kafka_message.offset,
+      AckRef = {Topic, Partition, LastOffset},
+      handle_ack(AckRef, State1, CommitNow);
+    false ->
+      State1
+  end.
+
 subscribe_partitions(#state{client_id = ClientId, consumers = Consumers0} = State) ->
   Consumers = lists:map(fun(C) -> subscribe_partition(ClientId, C) end, Consumers0),
   {ok, State#state{consumers = Consumers}}.
@@ -472,6 +538,7 @@ subscribe_partition(ClientId, #consumer{topic_partition = {Topic, Partition},
                       ?undef -> BeginOffset0;
                       N when N >= 0 -> N + 1
                     end,
+      ?LOG(info, "subscribe_partition... AckedOffset:~p BeginOffset0:~p BeginOffset:~p", [AckedOffset, BeginOffset0, BeginOffset]),
       Options = case BeginOffset =:= ?undef of
                   true -> #{}; %% fetch from 'begin_offset' in consumer config
                   false -> #{begin_offset => BeginOffset}

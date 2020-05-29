@@ -13,6 +13,8 @@
 
 -include("wolff.hrl").
 
+-logger_header("[wolff subscriber koc]").
+
 %% API
 -export([
   bootstrap/0,
@@ -85,6 +87,8 @@ init(_GroupId, _CallbackInitArg = {ClientId, Topics, MessageType}) ->
 handle_message(Topic, Partition, #kafka_message{} = Message, #callback_state{handlers = Handlers, message_type = message} = State) ->
   ?LOG(warning, "handle_message<<message>>...~n Topic~p~n Partition:~p~n Message:~p~n", [Topic, Partition, Message]),
   process_message(Topic, Partition, Handlers, Message),
+  %% or return {ok, ack, State} in case the message can be handled
+  %% synchronously here without dispatching to a worker
   {ok, State};
 handle_message(Topic, Partition, #kafka_message_set{messages = Messages} = _MessageSet,
     #callback_state{handlers = Handlers, message_type = message_set} = State) ->
@@ -113,9 +117,10 @@ message_handler_loop(Topic, Partition, SubscriberPid) ->
       offset = Offset,
       value = Value
     } ->
-      Seqno = list_to_integer(binary_to_list(Value)),
+      ?LOG(warning, "Offset:~p Value:~ts~n", [Offset, Value]),
+      Msg = binary_to_list(Value),
       Now = os_time_utc_str(),
-      ?LOG(info, "~p ~s-~p ~s: offset:~w seqno:~w\n", [self(), Topic, Partition, Now, Offset, Seqno]),
+      ?LOG(info, "~p ~s-~p ~s: offset:~w Msg:~w\n", [self(), Topic, Partition, Now, Offset, Msg]),
       wolff_group_subscriber:ack(SubscriberPid, Topic, Partition, Offset),
       ?MODULE:message_handler_loop(Topic, Partition, SubscriberPid)
   after 1000 ->

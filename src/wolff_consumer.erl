@@ -435,7 +435,7 @@ update_options(Options, #state{begin_offset = OldBeginOffset} = State) ->
                  State1#state{pending_acks = #pending_acks{}};
                false -> State1
              end,
-  ?LOG(info, "update_options...~n NewState:~p~n", [NewState]),
+  ?LOG(info, "update_options...~n NewBeginOffset:~p, OldBeginOffset:~p~n Options:~p~n NewState:~p~n", [NewBeginOffset, Options, OldBeginOffset, NewState]),
   resolve_begin_offset(NewState).
 
 resolve_begin_offset(#state{begin_offset = BeginOffset, conn = ConnPid,
@@ -493,6 +493,7 @@ maybe_send_fetch_request(#state{pending_acks = #pending_acks{count = Count, byte
   end.
 
 send_fetch_request(#state{begin_offset = BeginOffset, conn = Conn} = State) ->
+  ?LOG(info, "send_fetch_request... begin_offset:~p~n", [BeginOffset]),
   (is_integer(BeginOffset) andalso BeginOffset >= 0) orelse erlang:error({bad_begin_offset, BeginOffset}),
   Request = wolff_kafka_request:fetch(Conn, State#state.topic, State#state.partition,
     State#state.begin_offset, State#state.max_wait_time, State#state.min_bytes, State#state.max_bytes),
