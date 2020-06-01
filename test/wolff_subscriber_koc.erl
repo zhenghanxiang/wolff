@@ -18,7 +18,8 @@
 %% API
 -export([
   bootstrap/0,
-  bootstrap/1
+  bootstrap/1,
+  producer/0
 ]).
 
 -export([
@@ -41,6 +42,21 @@
 -spec bootstrap() -> ok.
 bootstrap() ->
   bootstrap(<<"wolff-demo-group-subscriber-koc-client-1">>).
+
+-spec producer() -> ok.
+producer() ->
+  emqx_logger:set_log_level(warning),
+  BootstrapHosts = [{"47.95.223.12", 9092}],
+  ClientId = <<"wolff-demo-group-producer-koc-client-1">>,
+  Topic = <<"wolff-demo-group-subscriber-koc">>,
+  {ok, _} = application:ensure_all_started(wolff),
+  {ok, ClientPid} = wolff:ensure_supervised_client(ClientId, BootstrapHosts, #{
+    connection_strategy => per_partition, min_metadata_refresh_interval => 5000}),
+  ?LOG(warning, "ClientPid:~p~n", ClientPid),
+  {ok, Producers} = wolff:ensure_supervised_producers(ClientId, Topic, #{}),
+  ?LOG(warning, "Producers:~p~n", [Producers]),
+  spawn_producer(Producers, ClientId),
+  ok.
 
 -spec bootstrap(wolff:client_id()) -> ok.
 bootstrap(ClientId) ->
@@ -111,6 +127,7 @@ spawn_message_handlers(ClientId, [Topic | Rest]) ->
   [{{Topic, Partition}, spawn_link(?MODULE, message_handler_loop, [Topic, Partition, self()])}
     || Partition <- lists:seq(0, PartitionCount - 1)] ++ spawn_message_handlers(ClientId, Rest).
 
+
 message_handler_loop(Topic, Partition, SubscriberPid) ->
   receive
     #kafka_message{
@@ -127,6 +144,19 @@ message_handler_loop(Topic, Partition, SubscriberPid) ->
     ?MODULE:message_handler_loop(Topic, Partition, SubscriberPid)
   end.
 
+spawn_producer(Producers, ClientId) ->
+  erlang:spawn_link(
+    fun() ->
+      produce_message_loop(Producers, ClientId)
+    end).
+
+produce_message_loop(Producers, ClientId) ->
+  Username = "Demo",
+  Data = [{clientid, ClientId}, {username, Username}, {node, a2b(node())}, {ts, erlang:system_time(millisecond)}],
+  msg_to_kafka(Producers, {feed_key(<<"${clientid}">>, {ClientId, Username}), data_format(Data, undefined)}),
+  timer:sleep(timer:seconds(2)),
+  produce_message_loop(Producers, ClientId).
+
 -spec os_time_utc_str() -> string().
 os_time_utc_str() ->
   Ts = os:timestamp(),
@@ -135,3 +165,55 @@ os_time_utc_str() ->
   S = io_lib:format("~4.4.0w-~2.2.0w-~2.2.0w:~2.2.0w:~2.2.0w:~2.2.0w.~6.6.0w",
     [Y, M, D, H, Min, Sec, Micro]),
   lists:flatten(S).
+
+a2b(A) when is_atom(A) ->
+  erlang:atom_to_binary(A, utf8);
+a2b(A) -> A.
+
+feed_key(undefined, _) -> <<>>;
+feed_key(<<"${clientid}">>, {ClientId, _Username}) ->
+  ClientId;
+feed_key(<<"${username}">>, {_ClientId, Username}) ->
+  Username;
+feed_key(<<"${clientid}">>, {ClientId, _Username, _Topic}) ->
+  ClientId;
+feed_key(<<"${username}">>, {_ClientId, Username, _Topic}) ->
+  Username;
+feed_key(<<"${topic}">>, {_ClientId, _Username, Topic}) ->
+  Topic;
+feed_key(Key, {_ClientId, _Username, Topic}) ->
+  case re:run(Key, <<"{([^}]+)}">>, [{capture, all, binary}, global]) of
+    nomatch -> <<>>;
+    {match, Match} ->
+      TopicWords = emqx_topic:words(Topic),
+      lists:foldl(
+        fun([_, Index], Acc) ->
+          Word = lists:nth(binary_to_integer(Index), TopicWords),
+          <<Acc/binary, Word/binary>>
+        end, <<>>, Match)
+  end.
+
+data_format(Data, undefined) -> emqx_json:encode(Data).
+
+msg_to_kafka(Producers, {Key, JsonMsg}) ->
+  ?LOG(warning, "msg to kafka...~n Producers: ~p~n Key: ~p~n JsonMsg: ~p", [Producers, Key, JsonMsg]),
+  try
+    produce(Producers, Key, JsonMsg)
+  catch
+    Error : Reason : Stask ->
+      ?LOG(error, "Call produce error: ~p, ~p", [Error, {Reason, Stask}])
+  end.
+
+produce(Producers, Key, JsonMsg) when is_list(JsonMsg) ->
+  produce(Producers, Key, iolist_to_binary(JsonMsg));
+produce(Producers, Key, JsonMsg) ->
+  ?LOG(warning, "produce...~n Key:~p, JsonMsg:~p", [Key, JsonMsg]),
+  case application:get_env(emqx_bridge_kafka, produce, sync) of
+    sync ->
+      ?LOG(warning, "produce sync..."),
+      Timeout = application:get_env(emqx_bridge_kafka, produce_sync_timeout, 3000),
+      wolff:send_sync(Producers, [#{key => Key, value => JsonMsg}], Timeout);
+    async ->
+      ?LOG(warning, "produce async..."),
+      wolff:send(Producers, [#{key => Key, value => JsonMsg}], fun emqx_bridge_kafka:wolff_callback/2)
+  end.
