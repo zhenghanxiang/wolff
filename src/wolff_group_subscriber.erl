@@ -323,7 +323,6 @@ handle_info({'DOWN', MonitorRef, process, _Pid, _Reason}, #state{client_mref = M
   ?LOG(warning, "handle_info<<DOWN client>>...~n _Pid:~p~n _Reason:~p~n State:~p~n", [_Pid, _Reason, State]),
   %% restart, my supervisor should restart me
   {stop, client_down, State};
-
 handle_info({'DOWN', _MonitorRef, process, Pid, Reason}, #state{consumers = Consumers} = State) ->
   ?LOG(warning, "handle_info<<DOWN consumers>>...~n Pid:~p~n Reason:~p~n State:~p~n", [Pid, Reason, State]),
   case get_consumer(Pid, Consumers) of
@@ -335,7 +334,6 @@ handle_info({'DOWN', _MonitorRef, process, Pid, Reason}, #state{consumers = Cons
     false ->
       {noreply, State}
   end;
-
 handle_info(?LO_CMD_SUBSCRIBE_PARTITIONS, State) ->
   ?LOG(info, "handle_info<<?LO_CMD_SUBSCRIBE_PARTITIONS>>...~n State:~p~n", [State]),
   NewState = case State#state.is_blocked of
@@ -346,7 +344,6 @@ handle_info(?LO_CMD_SUBSCRIBE_PARTITIONS, State) ->
              end,
   Timer = start_subscribe_timer(?undef, ?RESUBSCRIBE_DELAY),
   {noreply, NewState#state{subscribe_tref = Timer}};
-
 handle_info(_Info, State) ->
   ?LOG(info, "handle_info...~n Info:~p~n State:~p~n", [_Info, State]),
   {noreply, State}.
@@ -366,7 +363,6 @@ handle_call(unsubscribe_all_partitions, _From, #state{consumers = Consumers} = S
     end, Consumers
   ),
   {reply, ok, State#state{consumers = [], is_blocked = true}};
-
 handle_call({assign_partitions, Members, TopicPartitions}, _From,
     #state{cb_module = CbModule, cb_state = CbState} = State) ->
   ?LOG(info, "handle_call<<assign_partitions>>...~n Members:~p~n TopicPartitions:~p~n State:~p~n", [Members, TopicPartitions, State]),
@@ -378,7 +374,6 @@ handle_call({assign_partitions, Members, TopicPartitions}, _From,
     Result when is_list(Result) ->
       {reply, Result, State}
   end;
-
 handle_call({get_committed_offsets, TopicPartitions}, _From, #state{groupId = GroupId,
   cb_module = CbModule, cb_state = CbState} = State) ->
   ?LOG(info, "handle_call<<get_committed_offsets>>...~n TopicPartitions:~p~n State:~p~n", [TopicPartitions, State]),
@@ -389,7 +384,10 @@ handle_call({get_committed_offsets, TopicPartitions}, _From, #state{groupId = Gr
     Unknown ->
       erlang:error(bad_return_value, {CbModule, get_committed_offsets, Unknown})
   end;
-
+handle_call({call, Call}, From, #state{cb_module = CbModule, cb_state = CbState} = State) ->
+  ?LOG(info, "handle_call<<call>>...~n Call:~p~n State:~p~n", [Call, State]),
+  {ok, Result, NewCbState} = CbModule:handle_call(Call, From, CbState),
+  {reply, Result, State#state{cb_state = NewCbState}};
 handle_call(Call, _From, State) ->
   ?LOG(info, "handle_call...~n Call:~p~n State:~p~n", [Call, State]),
   {reply, {error, {unknown_call, Call}}, State}.
