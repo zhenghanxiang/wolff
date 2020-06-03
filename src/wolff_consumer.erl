@@ -124,12 +124,12 @@ start_link(ClientId, Topic, Partition, Config) ->
 %%
 %%  <li>`max_wait_time' (optional, default = 10000 ms)
 %%
-%%     Max number of seconds allowd for the broker to collect
+%%     Max number of seconds allowed for the broker to collect
 %%     `min_bytes' of messages in fetch response</li>
 %%
 %%  <li>`sleep_timeout' (optional, default = 1000 ms)
 %%
-%%     Allow consumer process to sleep this amout of ms if kafka replied
+%%     Allow consumer process to sleep this amount of ms if kafka replied
 %%     'empty' message set.</li>
 %%
 %%  <li>`prefetch_count' (optional, default = 10)
@@ -162,7 +162,7 @@ start_link(ClientId, Topic, Partition, Config) ->
 %%
 %%  <li>`size_stat_window': (optional, default = 5)
 %%
-%%     The moving-average window size to caculate average message
+%%     The moving-average window size to calculate average message
 %%     size.  Average message size is used to shrink `max_bytes' in
 %%     fetch requests after it has been expanded to fetch a large
 %%     message. Use 0 to immediately shrink back to original

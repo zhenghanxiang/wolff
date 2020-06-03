@@ -156,7 +156,7 @@
 %%
 %% `MemberPid': The member process pid.
 %%
-%% `Config': The group coordinator configs in a proplist, possible entries:
+%% `Config': The group coordinator configs in a map, possible entries:
 %%
 %%  <ul><li>`partition_assignment_strategy' (optional, default =
 %%  `roundrobin_v2')
