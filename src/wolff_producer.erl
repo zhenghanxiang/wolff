@@ -265,7 +265,7 @@ maybe_send_to_kafka(#{conn := Conn} = State) ->
       ?LOG(info, "is idle true..."),
       State;
     false when is_pid(Conn) ->
-      ?LOG(info, "is idle false... Pid: ~", [Conn]),
+      ?LOG(info, "is idle false... Pid: ~p~n", [Conn]),
       maybe_send_to_kafka_2(State);
     false ->
       ?LOG(info, "is idle false..."),
