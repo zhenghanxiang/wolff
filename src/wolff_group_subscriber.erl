@@ -335,7 +335,7 @@ handle_info({'DOWN', _MonitorRef, process, Pid, Reason}, #state{consumers = Cons
       {noreply, State}
   end;
 handle_info(?LO_CMD_SUBSCRIBE_PARTITIONS, State) ->
-  ?LOG(info, "handle_info<<?LO_CMD_SUBSCRIBE_PARTITIONS>>...~n State:~p~n", [State]),
+  ?LOG(debug, "handle_info<<?LO_CMD_SUBSCRIBE_PARTITIONS>>...~n State:~p~n", [State]),
   NewState = case State#state.is_blocked of
                true -> State;
                false ->

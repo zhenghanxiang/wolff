@@ -358,7 +358,7 @@ handle_info({'EXIT', Pid, Reason}, #state{member_pid = Pid} = State) ->
   end;
 handle_info(?LO_CMD_SEND_HB, #state{hb_ref = HbRef, heartbeat_rate_seconds = HbRate,
   session_timeout_seconds = SessionTimeout} = State) ->
-  ?LOG(info, "handle_info<<?LO_CMD_SEND_HB>>...~n State:~p~n", [State]),
+  ?LOG(debug, "handle_info<<?LO_CMD_SEND_HB>>...~n State:~p~n", [State]),
   _ = start_heartbeat_timer(HbRate),
   case HbRef of
     ?undef ->

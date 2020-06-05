@@ -288,11 +288,11 @@ handle_info(?INIT_CONNECTION, #state{subscriber = Subscriber} = State0) ->
       {noreply, State}
   end;
 handle_info(?SEND_FETCH_REQUEST, State0) ->
-  ?LOG(info, "handle_info<<SEND_FETCH_REQUEST>>...~n State:~p~n", [State0]),
+  ?LOG(debug, "handle_info<<SEND_FETCH_REQUEST>>...~n State:~p~n", [State0]),
   State = maybe_send_fetch_request(State0),
   {noreply, State};
 handle_info({msg, _Pid, Rsp}, State) ->
-  ?LOG(info, "handle_info<<msg>>... Rsp:~p~n State:~p~n", [Rsp, State]),
+  ?LOG(debug, "handle_info<<msg>>... Rsp:~p~n State:~p~n", [Rsp, State]),
   handle_fetch_response(Rsp, State);
 handle_info({'DOWN', _MonitorRef, process, Pid, _Reason}, #state{subscriber = Pid} = State) ->
   ?LOG(warning, "handle_info<<DOWN sub>>...~n _Reason:~p~n State:~p~n", [_Reason, State]),
@@ -485,7 +485,7 @@ maybe_send_fetch_request(#state{last_req_ref = R} = State) when is_reference(R) 
   State;
 maybe_send_fetch_request(#state{pending_acks = #pending_acks{count = Count, bytes = Bytes},
   prefetch_count = PrefetchCount, prefetch_bytes = PrefetchBytes} = State) ->
-  ?LOG(info, "maybe_send_fetch_request...~n State:~p~n", [State]),
+  ?LOG(debug, "maybe_send_fetch_request...~n State:~p~n", [State]),
   %% Do not send fetch request if exceeded limits on both count and size
   case Count > PrefetchCount andalso Bytes > PrefetchBytes of
     true -> State;
@@ -493,7 +493,7 @@ maybe_send_fetch_request(#state{pending_acks = #pending_acks{count = Count, byte
   end.
 
 send_fetch_request(#state{begin_offset = BeginOffset, conn = Conn} = State) ->
-  ?LOG(info, "send_fetch_request... begin_offset:~p~n", [BeginOffset]),
+  ?LOG(debug, "send_fetch_request... begin_offset:~p~n", [BeginOffset]),
   (is_integer(BeginOffset) andalso BeginOffset >= 0) orelse erlang:error({bad_begin_offset, BeginOffset}),
   Request = wolff_kafka_request:fetch(Conn, State#state.topic, State#state.partition,
     State#state.begin_offset, State#state.max_wait_time, State#state.min_bytes, State#state.max_bytes),
