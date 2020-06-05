@@ -273,7 +273,7 @@ code_change(_OldVsn, State, _Extra) ->
   {ok, State}.
 
 terminate(Reason, #state{payload_connections = Connections, meta_conn = MetaConn} = State) ->
-  ?LOG(info, "terminate...~n Reason:~p~n State: ~p", [Reason, State]),
+  ?LOG(warning, "terminate...~n Reason:~p~n State: ~p", [Reason, State]),
   ok = close_connections(Connections),
   ok = close_connection(MetaConn),
   {ok, State#state{payload_connections = #{}, meta_conn = ?undef, metadata_ts = #{}}}.

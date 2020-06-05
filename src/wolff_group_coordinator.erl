@@ -524,7 +524,7 @@ maybe_reset_member_id(State, Reason) ->
 
 -spec discover_coordinator(state()) -> {ok, state()}.
 discover_coordinator(#state{client_id = ClientId, connection = Conn, groupId = GroupId} = State) ->
-  ?LOG(info, "discover_coordinator...~n State:~p~n", [State]),
+  ?LOG(warning, "discover_coordinator...~n State:~p~n", [State]),
   {Endpoint, ConnConfig} = ?ESCALATE(wolff_client:get_group_coordinator(ClientId, GroupId)),
   case is_already_connected(State, Endpoint) of
     true ->
@@ -541,7 +541,7 @@ discover_coordinator(#state{client_id = ClientId, connection = Conn, groupId = G
 join_group(#state{groupId = GroupId, memberId = MemberId, topics = Topics,
   connection = Conn, session_timeout_seconds = SessionTimeoutSec,
   protocol_name = ProtocolName, member_module = MemberModule, member_pid = MemberPid} = State) ->
-  ?LOG(info, "join_group...~n State:~p~n", [State]),
+  ?LOG(warning, "join_group...~n State:~p~n", [State]),
   Meta = [
     {version, ?WOLFF_CONSUMER_GROUP_PROTOCOL_VERSION},
     {topics, Topics},
@@ -587,7 +587,7 @@ join_group(#state{groupId = GroupId, memberId = MemberId, topics = Topics,
 -spec sync_group(state()) -> {ok, state()}.
 sync_group(#state{groupId = GroupId, generationId = GenerationId, memberId = MemberId,
   connection = Conn, member_pid = MemberPid, member_module = MemberModule} = State) ->
-  ?LOG(info, "sync_group...~n State:~p~n", [State]),
+  ?LOG(warning, "sync_group...~n State:~p~n", [State]),
   KafkaParams = [
     {group_id, GroupId},
     {generation_id, GenerationId},
