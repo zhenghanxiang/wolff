@@ -222,7 +222,7 @@ handle_call({get_leader_connection, Topic, Partition}, _From, State) ->
       {reply, {error, Reason}, State}
   end;
 handle_call({get_group_coordinator, GroupId}, _From, State) ->
-  ?LOG(info, "handle_call<<get_group_coordinator>>...~n GroupId:~p~n State:~p~n", [GroupId, State]),
+  ?LOG(warning, "handle_call<<get_group_coordinator>>...~n GroupId:~p~n State:~p~n", [GroupId, State]),
   {Result, NewState} = do_get_group_coordinator(State, GroupId),
   {reply, Result, NewState};
 handle_call({get_partitions_count, Topic}, _From, State) ->

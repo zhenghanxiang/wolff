@@ -377,7 +377,7 @@ handle_info(?LO_CMD_SEND_HB, #state{hb_ref = HbRef, heartbeat_rate_seconds = HbR
   end;
 handle_info({msg, _Pid, #kpro_rsp{api = heartbeat, ref = HbRef, msg = Body}},
     #state{hb_ref = {HbRef, _SentTime}} = State0) ->
-  ?LOG(info, "handle_info<<msg>>...~n Body:~p~n State:~p~n", [Body, State0]),
+  ?LOG(debug, "handle_info<<msg>>...~n Body:~p~n State:~p~n", [Body, State0]),
   EC = kf(error_code, Body),
   State = State0#state{hb_ref = ?undef},
   case ?IS_ERROR(EC) of
@@ -1039,7 +1039,7 @@ user_data(Module, Pid) ->
 %%       but the timer is always restarted after expiration.
 -spec start_heartbeat_timer(pos_integer()) -> ok.
 start_heartbeat_timer(HbRateSeconds) ->
-  ?LOG(info, "start_heartbeat_timer...~n HbRateSeconds:~p~n", [HbRateSeconds]),
+  ?LOG(debug, "start_heartbeat_timer...~n HbRateSeconds:~p~n", [HbRateSeconds]),
   erlang:send_after(timer:seconds(HbRateSeconds), self(), ?LO_CMD_SEND_HB),
   ok.
 
