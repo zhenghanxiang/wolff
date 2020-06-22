@@ -327,7 +327,7 @@ handle_info({ack, GenerationId, Topic, Partition, Offset}, State) ->
   ?LOG(info, "handle_info<<ack>>...~n GenerationId:~p~n Topic:~p~n Partition:~p~n Offset:~p~n State:~p~n", [GenerationId, Topic, Partition, Offset, State]),
   {noreply, handle_ack(State, GenerationId, Topic, Partition, Offset)};
 handle_info(?LO_CMD_COMMIT_OFFSETS, #state{is_in_group = true} = State) ->
-  ?LOG(info, "handle_info<<?LO_CMD_COMMIT_OFFSETS>>...~n State:~p~n", [State]),
+  ?LOG(debug, "handle_info<<?LO_CMD_COMMIT_OFFSETS>>...~n State:~p~n", [State]),
   {ok, NewState} =
     try
       do_commit_offsets(State)

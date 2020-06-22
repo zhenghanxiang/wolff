@@ -265,10 +265,10 @@ maybe_send_to_kafka(#{conn := Conn} = State) ->
       ?LOG(info, "is idle true..."),
       State;
     false when is_pid(Conn) ->
-      ?LOG(info, "is idle false... Pid: ~p~n", [Conn]),
+      ?LOG(info, "is idle false..."),
       maybe_send_to_kafka_2(State);
     false ->
-      ?LOG(info, "is idle false..."),
+      ?LOG(info, "is idle false and Conn is ~p...", [Conn]),
       ensure_delayed_reconnect(State)
   end.
 

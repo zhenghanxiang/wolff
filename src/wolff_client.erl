@@ -189,6 +189,10 @@ handle_info(init, State0) ->
   ?LOG(info, "handle_info<<init>>..."),
   State = ensure_metadata_connection(State0),
   {noreply, State};
+handle_info({'EXIT', Pid, Reason}, State) ->
+  ?LOG(info, "handle_info<<EXIT>>... Resaon:~p~n Pid:~p~n State:~p~n", [Reason, Pid, State]),
+  NewState = handle_connection_down(State, Pid, Reason),
+  {noreply, NewState};
 handle_info(_Info, State) ->
   ?LOG(info, "handle_info...~n _Info: ~p~n State: ~p", [_Info, State]),
   {noreply, State}.
@@ -578,3 +582,18 @@ parse_broker_meta(BrokerMeta) ->
   Host = kf(host, BrokerMeta),
   Port = kf(port, BrokerMeta),
   {BrokerId, {Host, Port}}.
+
+%% Handle connection pid EXIT event, for payload sockets keep the timestamp,
+%% but do not restart yet. Payload connection will be re-established when a
+%% per-partition worker restarts and requests for a connection after
+%% it is cooled down.
+handle_connection_down(#state{meta_conn = Pid} = State, Pid, _Reason) ->
+  State#state{meta_conn = ?undef};
+handle_connection_down(#state{payload_connections = Conns} = State, Pid, Reason) ->
+  %% 查找ConnPid
+  Conn = maps:filter(fun(_Key, ConnPid) -> ConnPid == Pid end, Conns),
+  case Conn of
+    %% stale EXIT message
+    #{} -> State;
+    #{Key => Pid} -> State#state{payload_connections = Conns#{Key => Reason}}
+  end.
