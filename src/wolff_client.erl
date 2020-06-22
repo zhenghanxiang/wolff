@@ -591,9 +591,13 @@ handle_connection_down(#state{meta_conn = Pid} = State, Pid, _Reason) ->
   State#state{meta_conn = ?undef};
 handle_connection_down(#state{payload_connections = Conns} = State, Pid, Reason) ->
   %% 查找ConnPid
-  Conn = maps:filter(fun(_Key, ConnPid) -> ConnPid == Pid end, Conns),
-  case Conn of
-    %% stale EXIT message
-    #{} -> State;
-    #{Key => Pid} -> State#state{payload_connections = Conns#{Key => Reason}}
-  end.
+  NewConns = maps:fold(
+    fun(K, V, Acc) ->
+      case V =:= Pid of
+        true ->
+          Acc#{K => Reason};
+        false ->
+          Acc#{K => V}
+      end
+    end, #{}, Conns),
+  State#state{payload_connections = NewConns}.
