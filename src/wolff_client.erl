@@ -590,7 +590,6 @@ parse_broker_meta(BrokerMeta) ->
 handle_connection_down(#state{meta_conn = Pid} = State, Pid, _Reason) ->
   State#state{meta_conn = ?undef};
 handle_connection_down(#state{payload_connections = Conns} = State, Pid, Reason) ->
-  %% 查找ConnPid
   NewConns = maps:fold(
     fun(K, V, Acc) ->
       case V =:= Pid of
