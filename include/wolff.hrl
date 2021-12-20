@@ -1,8 +1,8 @@
 -include_lib("kafka_protocol/include/kpro.hrl").
 -include_lib("kafka_protocol/include/kpro_public.hrl").
 -include_lib("kafka_protocol/include/kpro_error_codes.hrl").
--include_lib("emqx/include/emqx.hrl").
--include_lib("emqx/include/logger.hrl").
+-include("emqx.hrl").
+-include("logger.hrl").
 
 -ifndef(WOLFF_HRL).
 -define(WOLFF_HRL, true).
