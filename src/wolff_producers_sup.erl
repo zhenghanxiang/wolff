@@ -9,7 +9,7 @@
 -module(wolff_producers_sup).
 -author("zxb").
 
--include_lib("emqx/include/logger.hrl").
+-include("logger.hrl").
 
 -logger_header("[wolff producers sup]").
 
