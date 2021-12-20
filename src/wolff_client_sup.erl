@@ -11,7 +11,7 @@
 
 -behaviour(supervisor).
 
--include_lib("emqx/include/logger.hrl").
+-include("logger.hrl").
 
 %% API
 -export([start_link/0, ensure_present/3, ensure_absence/1, find_client/1]).
