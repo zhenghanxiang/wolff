@@ -13,7 +13,7 @@
 
 -include_lib("kafka_protocol/include/kpro.hrl").
 -include_lib("kafka_protocol/include/kpro_public.hrl").
--include_lib("emqx/include/logger.hrl").
+-include("logger.hrl").
 
 -logger_header("[wolff producer]").
 
