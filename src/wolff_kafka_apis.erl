@@ -18,7 +18,7 @@
 -define(SERVER, ?MODULE).
 -define(ETS, ?MODULE).
 
--include_lib("emqx/include/logger.hrl").
+-include("logger.hrl").
 
 -logger_header("[wolff kafka apis]").
 
