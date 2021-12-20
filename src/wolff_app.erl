@@ -7,7 +7,9 @@
 
 -behaviour(application).
 
--include_lib("emqx/include/logger.hrl").
+-emqx_plugin(?MODULE).
+
+-include("logger.hrl").
 
 -logger_header("[wolff app]").
 
